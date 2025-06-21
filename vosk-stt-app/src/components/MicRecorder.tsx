@@ -70,14 +70,56 @@ const MicRecorder = ({ onAudio }: MicRecorderProps) => {
   };
 
   return (
-    <VStack gap={4}>
-      <Button colorScheme={recording ? "red" : "blue"} onClick={recording ? handleStop : handleStart} size="lg">
+    <VStack gap={{ base: 4, md: 6 }} w="100%" maxW="100%">
+      <Button 
+        bg={recording ? "red.500" : "blue.500"}
+        color="white"
+        onClick={recording ? handleStop : handleStart} 
+        size={{ base: "lg", md: "xl" }}
+        h={{ base: "60px", md: "70px" }}
+        w={{ base: "200px", md: "250px" }}
+        fontSize={{ base: "lg", md: "xl" }}
+        fontWeight="bold"
+        borderRadius="full"
+        boxShadow="lg"
+        _hover={{
+          bg: recording ? "red.600" : "blue.600",
+          transform: "translateY(-2px)",
+          boxShadow: "xl"
+        }}
+        _active={{
+          bg: recording ? "red.700" : "blue.700",
+          transform: "translateY(0px)"
+        }}
+        transition="all 0.2s"
+      >
         {recording ? "Stop Recording" : "Start Recording"}
       </Button>
+      
       {error && (
-        <Text color="red.500" fontSize="sm">{error}</Text>
+        <Text 
+          color="red.600" 
+          fontSize={{ base: "sm", md: "md" }}
+          textAlign="center"
+          bg="red.50"
+          p={3}
+          borderRadius="md"
+          border="1px solid"
+          borderColor="red.200"
+          w="100%"
+          maxW="100%"
+        >
+          {error}
+        </Text>
       )}
-      <Text fontSize="sm" color="gray.500">
+      
+      <Text 
+        fontSize={{ base: "md", md: "lg" }} 
+        color="gray.700"
+        textAlign="center"
+        fontWeight="medium"
+        maxW="100%"
+      >
         {recording ? "Recording..." : "Press to record your voice."}
       </Text>
     </VStack>

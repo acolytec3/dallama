@@ -50,20 +50,83 @@ export default function App() {
   };
 
   return (
-    <Box minH="100vh" bg="gray.50" p={4}>
-      <Stack gap={8} alignItems="center" direction="column">
-        <Heading as="h1" size="lg" mt={8}>
+    <Box 
+      minH="100vh" 
+      bg="gray.50" 
+      p={{ base: 4, md: 6 }}
+      maxW="100vw"
+      overflowX="hidden"
+    >
+      <Stack 
+        gap={{ base: 6, md: 8 }} 
+        alignItems="center" 
+        direction="column"
+        maxW="100%"
+        px={{ base: 2, md: 4 }}
+      >
+        <Heading 
+          as="h1" 
+          size={{ base: "lg", md: "xl" }} 
+          mt={{ base: 6, md: 8 }}
+          textAlign="center"
+          color="gray.800"
+          fontWeight="bold"
+        >
           Vosk STT Mobile Web App
         </Heading>
+        
         {!modelLoaded && <ModelLoader onReady={(m) => { setModel(m); setModelLoaded(true); }} />}
+        
         {modelLoaded && (
           <>
             <MicRecorder onAudio={handleAudio} />
-            {recognizing && <Text color="blue.500">Transcribing...</Text>}
-            {error && <Text color="red.500">{error}</Text>}
+            
+            {recognizing && (
+              <Text 
+                color="blue.600" 
+                fontSize={{ base: "md", md: "lg" }}
+                fontWeight="medium"
+                textAlign="center"
+              >
+                Transcribing...
+              </Text>
+            )}
+            
+            {error && (
+              <Text 
+                color="red.600" 
+                fontSize={{ base: "sm", md: "md" }}
+                textAlign="center"
+                bg="red.50"
+                p={3}
+                borderRadius="md"
+                border="1px solid"
+                borderColor="red.200"
+                maxW="100%"
+              >
+                {error}
+              </Text>
+            )}
+            
             {transcript && (
-              <Box p={4} bg="white" borderRadius="md" boxShadow="md" maxW="sm">
-                <Text fontSize="md">{transcript}</Text>
+              <Box 
+                p={{ base: 4, md: 6 }} 
+                bg="white" 
+                borderRadius="lg" 
+                boxShadow="lg" 
+                maxW={{ base: "100%", md: "lg" }}
+                w="100%"
+                border="1px solid"
+                borderColor="gray.200"
+              >
+                <Text 
+                  fontSize={{ base: "md", md: "lg" }}
+                  color="gray.800"
+                  lineHeight="1.6"
+                  textAlign="left"
+                >
+                  {transcript}
+                </Text>
               </Box>
             )}
           </>

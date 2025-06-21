@@ -37,10 +37,29 @@ const ModelLoader = ({ onReady }: ModelLoaderProps) => {
 
   if (loading) {
     return (
-      <VStack gap={4} p={4}>
-        <Spinner size="lg" color="blue.500" />
-        <Text>Loading Vosk model...</Text>
-        <Text fontSize="sm" color="gray.500">
+      <VStack 
+        gap={{ base: 4, md: 6 }} 
+        p={{ base: 6, md: 8 }}
+        w="100%"
+        maxW="100%"
+        textAlign="center"
+      >
+        <Spinner 
+          size={{ base: "xl", md: "xl" }} 
+          color="blue.600" 
+        />
+        <Text 
+          fontSize={{ base: "lg", md: "xl" }}
+          color="gray.800"
+          fontWeight="medium"
+        >
+          Loading Vosk model...
+        </Text>
+        <Text 
+          fontSize={{ base: "sm", md: "md" }} 
+          color="gray.600"
+          maxW="100%"
+        >
           This may take a few moments on first load.
         </Text>
       </VStack>
@@ -49,11 +68,30 @@ const ModelLoader = ({ onReady }: ModelLoaderProps) => {
 
   if (error) {
     return (
-      <Box textAlign="center" p={4}>
-        <Text color="red.500" mb={2}>
+      <Box 
+        textAlign="center" 
+        p={{ base: 6, md: 8 }}
+        w="100%"
+        maxW="100%"
+      >
+        <Text 
+          color="red.600" 
+          mb={3}
+          fontSize={{ base: "md", md: "lg" }}
+          fontWeight="medium"
+          bg="red.50"
+          p={3}
+          borderRadius="md"
+          border="1px solid"
+          borderColor="red.200"
+        >
           {error}
         </Text>
-        <Text fontSize="sm" color="gray.500">
+        <Text 
+          fontSize={{ base: "sm", md: "md" }} 
+          color="gray.600"
+          maxW="100%"
+        >
           Please check your internet connection and try again.
         </Text>
       </Box>
