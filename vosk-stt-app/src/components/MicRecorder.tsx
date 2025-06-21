@@ -8,13 +8,11 @@ interface MicRecorderProps {
 const MicRecorder = ({ onAudio }: MicRecorderProps) => {
   const [recording, setRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<Blob[]>([]);
 
   const handleStart = async () => {
     setError(null);
-    setAudioUrl(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
         audio: {
@@ -57,24 +55,6 @@ const MicRecorder = ({ onAudio }: MicRecorderProps) => {
           }
         }
         
-        // Create playable audio URL for debugging
-        const playableBlob = await new Promise<Blob>((resolve) => {
-          const mediaStreamDest = audioContext.createMediaStreamDestination();
-          const source = audioContext.createBufferSource();
-          source.buffer = monoBuffer;
-          source.connect(mediaStreamDest);
-          source.start();
-          source.onended = () => {
-            const recorder = new MediaRecorder(mediaStreamDest.stream);
-            const chunks: Blob[] = [];
-            recorder.ondataavailable = (e) => chunks.push(e.data);
-            recorder.onstop = () => resolve(new Blob(chunks, { type: 'audio/wav' }));
-            recorder.start();
-            setTimeout(() => recorder.stop(), monoBuffer.length / 16000 * 1000);
-          };
-        });
-        setAudioUrl(URL.createObjectURL(playableBlob));
-        
         onAudio(monoBuffer);
       };
       mediaRecorder.start();
@@ -96,12 +76,6 @@ const MicRecorder = ({ onAudio }: MicRecorderProps) => {
       </Button>
       {error && (
         <Text color="red.500" fontSize="sm">{error}</Text>
-      )}
-      {audioUrl && (
-        <VStack gap={2}>
-          <Text fontSize="sm" color="gray.600">Playback converted audio:</Text>
-          <audio controls src={audioUrl} style={{ width: '100%', maxWidth: '300px' }} />
-        </VStack>
       )}
       <Text fontSize="sm" color="gray.500">
         {recording ? "Recording..." : "Press to record your voice."}
