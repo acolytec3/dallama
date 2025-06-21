@@ -110,6 +110,8 @@ The goal is to build a mobile-friendly web app using Vite, React, TypeScript, an
 - [x] Fix Chakra UI v3 provider setup (resolve '_config' error)
 - [x] Add vosk-browser and download a small Vosk model
 - [x] Fix Vosk model format (keep as tar.gz for vosk-browser)
+- [x] Fix recognizer configuration (resolve "undefined to float" error)
+- [x] Add audio playback and debugging features
 - [x] Implement ModelLoader component
 - [x] Implement MicRecorder component
 - [x] Integrate MicRecorder into main app
@@ -129,6 +131,9 @@ The goal is to build a mobile-friendly web app using Vite, React, TypeScript, an
 - Fixed Chakra UI v3 provider setup: installed @chakra-ui/cli snippets, updated main.tsx to use Provider from snippets, added vite-tsconfig-paths, and configured tsconfig.app.json with proper paths. This resolves the '_config' error.
 - Fixed Vosk model corruption issue: re-downloaded the model from the official source (alphacephei.com) and verified the archive integrity. The model is now properly extracted and ready for use.
 - Corrected Vosk model format: vosk-browser expects the model to remain in tar.gz format, not extracted. Updated ModelLoader to use the correct path to the tar.gz file.
+- Fixed recognizer configuration error: resolved "Cannot convert undefined to float" by properly passing sample rate (16000) to KaldiRecognizer constructor and ensuring audio format matches Vosk requirements (16kHz mono PCM).
+- Added audio playback and debugging features: users can now play back the converted audio to verify recording quality, and detailed debug information is displayed to help troubleshoot recognition issues.
+- **FIXED CRITICAL BUG**: Resolved "buffer.getChannelData is not a function" error by changing the audio pipeline to pass AudioBuffer objects directly to vosk-browser's acceptWaveform method instead of converting to PCM ArrayBuffer. Updated both MicRecorder and App components to handle AudioBuffer correctly and set up proper event listeners for recognition results.
 
 # Lessons
 - Vosk Node.js bindings are not browser-compatible; use vosk-browser (WASM) for client-side.
@@ -139,6 +144,10 @@ The goal is to build a mobile-friendly web app using Vite, React, TypeScript, an
 - Chakra UI v3 requires using the Provider component from snippets instead of ChakraProvider directly.
 - Vosk models can become corrupted during download; always verify archive integrity and re-download from official sources if needed.
 - vosk-browser expects models to remain in tar.gz format; do not extract them to individual files.
+- Vosk recognizer requires explicit sample rate parameter (16000) and expects 16kHz mono PCM audio format.
+- Audio playback debugging is essential for troubleshooting speech recognition issues.
+- **CRITICAL**: vosk-browser's acceptWaveform method expects an AudioBuffer object, not raw PCM data. Always pass the AudioBuffer directly from the Web Audio API.
+- **CRITICAL**: vosk-browser uses event-based recognition results, not synchronous return values. Set up 'result' and 'partialresult' event listeners to receive transcription output.
 - Include info useful for debugging in the program output.
 - Read the file before you try to edit it.
 - If there are vulnerabilities that appear in the terminal, run npm audit before proceeding.

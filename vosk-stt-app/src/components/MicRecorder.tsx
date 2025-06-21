@@ -2,29 +2,80 @@ import { useRef, useState } from "react";
 import { Button, Text, VStack } from "@chakra-ui/react";
 
 interface MicRecorderProps {
-  onAudio: (audioBuffer: ArrayBuffer) => void;
+  onAudio: (audioBuffer: AudioBuffer) => void;
 }
 
 const MicRecorder = ({ onAudio }: MicRecorderProps) => {
   const [recording, setRecording] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunks = useRef<Blob[]>([]);
 
   const handleStart = async () => {
     setError(null);
+    setAudioUrl(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        audio: {
+          sampleRate: 16000,
+          channelCount: 1,
+          echoCancellation: true,
+          noiseSuppression: true
+        } 
+      });
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm;codecs=opus'
+      });
       mediaRecorderRef.current = mediaRecorder;
       audioChunks.current = [];
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) audioChunks.current.push(e.data);
       };
-      mediaRecorder.onstop = () => {
+      mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunks.current, { type: "audio/webm" });
         audioChunks.current = [];
-        audioBlob.arrayBuffer().then(onAudio);
+        
+        // Convert to 16kHz mono AudioBuffer for Vosk
+        const audioContext = new AudioContext({ sampleRate: 16000 });
+        const arrayBuffer = await audioBlob.arrayBuffer();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        
+        // Convert to mono if needed
+        let monoBuffer = audioBuffer;
+        if (audioBuffer.numberOfChannels > 1) {
+          monoBuffer = audioContext.createBuffer(1, audioBuffer.length, 16000);
+          const monoData = monoBuffer.getChannelData(0);
+          
+          // Mix all channels to mono
+          for (let i = 0; i < audioBuffer.length; i++) {
+            let sum = 0;
+            for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
+              sum += audioBuffer.getChannelData(channel)[i];
+            }
+            monoData[i] = sum / audioBuffer.numberOfChannels;
+          }
+        }
+        
+        // Create playable audio URL for debugging
+        const playableBlob = await new Promise<Blob>((resolve) => {
+          const mediaStreamDest = audioContext.createMediaStreamDestination();
+          const source = audioContext.createBufferSource();
+          source.buffer = monoBuffer;
+          source.connect(mediaStreamDest);
+          source.start();
+          source.onended = () => {
+            const recorder = new MediaRecorder(mediaStreamDest.stream);
+            const chunks: Blob[] = [];
+            recorder.ondataavailable = (e) => chunks.push(e.data);
+            recorder.onstop = () => resolve(new Blob(chunks, { type: 'audio/wav' }));
+            recorder.start();
+            setTimeout(() => recorder.stop(), monoBuffer.length / 16000 * 1000);
+          };
+        });
+        setAudioUrl(URL.createObjectURL(playableBlob));
+        
+        onAudio(monoBuffer);
       };
       mediaRecorder.start();
       setRecording(true);
@@ -45,6 +96,12 @@ const MicRecorder = ({ onAudio }: MicRecorderProps) => {
       </Button>
       {error && (
         <Text color="red.500" fontSize="sm">{error}</Text>
+      )}
+      {audioUrl && (
+        <VStack gap={2}>
+          <Text fontSize="sm" color="gray.600">Playback converted audio:</Text>
+          <audio controls src={audioUrl} style={{ width: '100%', maxWidth: '300px' }} />
+        </VStack>
       )}
       <Text fontSize="sm" color="gray.500">
         {recording ? "Recording..." : "Press to record your voice."}
