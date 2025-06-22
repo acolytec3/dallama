@@ -27,6 +27,12 @@ const session = new LlamaChatSession({
     contextSequence: context.getSequence(),
 });
 
+// Add system prompt for concise, helpful responses
+const systemPrompt = `You are a helpful AI assistant optimized for voice conversations. Keep your responses brief, clear, and under 100 words. Focus on being helpful and direct. Avoid unnecessary explanations or verbose language.`;
+
+// Initialize the session with the system prompt
+await session.prompt(systemPrompt);
+
 const fastify = Fastify({ logger: false });
 
 // Register CORS plugin
@@ -57,9 +63,21 @@ fastify.post("/chat", async (request, reply) => {
 
         console.log(chalk.blue(`Processing text: "${text}"`));
 
-        const response = await session.prompt(text);
+        // Start timing for performance monitoring
+        const startTime = Date.now();
 
+        // Optimized generation parameters for faster, more concise responses
+        const response = await session.prompt(text, {
+            maxTokens: 150, // Limit response length to ~100 words
+            temperature: 0.3, // Lower temperature for more deterministic responses
+            topP: 0.8, // Slightly lower top_p for faster sampling
+            topK: 40, // Limit top_k for faster token selection
+            repeatPenalty: { penalty: 1.1 }, // Prevent repetitive responses
+        });
+
+        const responseTime = Date.now() - startTime;
         console.log(chalk.green(`LLM Response: "${response}"`));
+        console.log(chalk.cyan(`Response time: ${responseTime}ms, Length: ${response.length} chars`));
 
         return {
             message: response,

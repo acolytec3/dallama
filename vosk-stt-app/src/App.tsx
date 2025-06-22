@@ -45,26 +45,7 @@ export default function App() {
       recognizer.acceptWaveform(audioBuffer);
       console.log("Audio sent to recognizer");
       
-      // Set up event listeners for results
-      recognizer.on("result", (message: { result: { text: string } }) => {
-        console.log("Final result:", message);
-        if (message.result && message.result.text) {
-          const finalTranscript = message.result.text;
-          console.log("Final transcript:", finalTranscript);
-          console.log("isConnected:", isConnected);
-          console.log("finalTranscript.trim():", finalTranscript.trim());
-          
-          // Update the conversation with the final transcript
-          updateCurrentMessage(finalTranscript);
-          
-          // Note: We don't send final results to LLM here since we're already
-          // sending partial results immediately. This prevents duplicate sends.
-          // The final result just updates the display with the most accurate version.
-          
-        }
-        recognizer.remove();
-      });
-      
+      // Set up event listeners for results      
       recognizer.on("partialresult", (message: { result: { partial: string } }) => {
         console.log("Partial result:", message);
         if (message.result && message.result.partial) {
