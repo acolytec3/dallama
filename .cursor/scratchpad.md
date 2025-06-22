@@ -423,14 +423,22 @@ The project is on track, the MVP is robust, and the codebase is well-structured.
 
 **Status**: Ready for testing. The voice-to-LLM pipeline should now work seamlessly with transcribed text appearing directly in the conversation flow.
 
-### Previous Issues Resolved
-- Fixed Chakra UI v3 provider setup errors
-- Resolved Vosk model format issues (kept as tar.gz)
-- Fixed recognizer creation errors (explicit sample rate)
-- Resolved audio format mismatches (16kHz mono PCM conversion)
-- Fixed "Recognition Failed" errors
-- Resolved ChakraProvider "_config" errors
-- Implemented mobile-friendly UI with proper contrast
-- Added dark mode support
-- Integrated LLM server communication
-- Fixed partial results not being sent to LLM 
+### Critical Fix Applied (Latest)
+**Issue Identified**: The LLM sending logic was flawed because:
+1. Vosk speech recognition models don't add punctuation to their output (confirmed by [Vosk documentation](https://alphacephei.com/vosk/install) and [GitHub issues](https://github.com/alphacep/vosk-api/issues/1302))
+2. Since we manually control recording start/stop, we only get partial results, never final results with punctuation
+3. The previous logic was waiting for punctuation that would never come
+
+**Solution Implemented**:
+1. **Removed punctuation-based detection** - No longer waiting for periods, exclamation marks, etc.
+2. **Send partial results immediately** - As soon as we get a partial result from Vosk, send it to the LLM
+3. **Prevent duplicate sends** - Final results only update the display, don't send to LLM again
+4. **Real-time conversation flow** - Users see their speech appear in the conversation as they speak
+
+**Technical Changes**:
+- Modified `partialresult` handler to send to LLM immediately when text is available
+- Updated `result` handler to only update display, not send to LLM (prevents duplicates)
+- Removed unused `currentTranscript` state variable
+- Added detailed console logging for debugging
+
+**Status**: This should now work correctly with the manual recording control. Users will see their speech appear in the conversation in real-time and get AI responses immediately. 

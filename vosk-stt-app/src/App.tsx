@@ -57,13 +57,10 @@ export default function App() {
           // Update the conversation with the final transcript
           updateCurrentMessage(finalTranscript);
           
-          // Automatically send transcribed text to LLM
-          if (isConnected && finalTranscript.trim()) {
-            console.log("Sending message to LLM:", finalTranscript);
-            sendMessage(finalTranscript);
-          } else {
-            console.log("NOT sending message to LLM. isConnected:", isConnected, "hasText:", !!finalTranscript.trim());
-          }
+          // Note: We don't send final results to LLM here since we're already
+          // sending partial results immediately. This prevents duplicate sends.
+          // The final result just updates the display with the most accurate version.
+          
         }
         recognizer.remove();
       });
@@ -77,14 +74,13 @@ export default function App() {
           // Update the conversation with partial results
           if (partialTranscript.trim()) {
             updateCurrentMessage(partialTranscript);
-          }
-          
-          // Check if we have a complete sentence and send to LLM
-          if (isConnected && partialTranscript.trim() && 
-              (partialTranscript.endsWith('.') || partialTranscript.endsWith('!') || 
-               partialTranscript.endsWith('?') || partialTranscript.endsWith(','))) {
-            console.log("Sending complete sentence to LLM:", partialTranscript);
-            sendMessage(partialTranscript);
+            
+            // Send to LLM immediately since Vosk doesn't add punctuation
+            // and we're manually controlling recording start/stop
+            if (isConnected && partialTranscript.trim()) {
+              console.log("Sending partial result to LLM:", partialTranscript);
+              sendMessage(partialTranscript);
+            }
           }
         }
       });
