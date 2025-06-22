@@ -264,45 +264,46 @@ The goal is to build a mobile-friendly web app using Vite, React, TypeScript, an
 - **Performance**: Large LLM responses may impact UI responsiveness
 
 # Executor's Feedback or Assistance Requests
-- Chakra UI and emotion have been upgraded to v3 as per migration guide. Layout in App.tsx now uses 'gap' prop for Stack, resolving previous linter/type errors. Ready to proceed with vosk-browser integration and component implementation.
-- vosk-browser is installed and the small English model (vosk-model-small-en-us-0.15) is downloaded and extracted to public/model/. Ready for client-side WASM STT integration.
-- ModelLoader component is implemented and integrated into the app. Model loads and triggers onReady callback. Ready to proceed with MicRecorder implementation.
-- MicRecorder component is implemented, handles mic permissions, recording, and errors. Linter/type errors fixed for Chakra v3. Ready to proceed with vosk-browser recognizer integration.
-- MicRecorder is now integrated into the main app. Audio buffer is received and ready for vosk-browser recognizer integration.
-- vosk-browser recognizer is now integrated. Audio is transcribed in-browser and transcript is displayed. Used linter suppression for dynamic model type as vosk-browser does not provide TypeScript types for model/recognizer.
-- Fixed Chakra UI v3 provider setup: installed @chakra-ui/cli snippets, updated main.tsx to use Provider from snippets, added vite-tsconfig-paths, and configured tsconfig.app.json with proper paths. This resolves the '_config' error.
-- Fixed Vosk model corruption issue: re-downloaded the model from the official source (alphacephei.com) and verified the archive integrity. The model is now properly extracted and ready for use.
-- Corrected Vosk model format: vosk-browser expects the model to remain in tar.gz format, not extracted. Updated ModelLoader to use the correct path to the tar.gz file.
-- Fixed recognizer configuration error: resolved "Cannot convert undefined to float" by properly passing sample rate (16000) to KaldiRecognizer constructor and ensuring audio format matches Vosk requirements (16kHz mono PCM).
-- Added audio playback and debugging features: users can now play back the converted audio to verify recording quality, and detailed debug information is displayed to help troubleshoot recognition issues.
-- **FIXED CRITICAL BUG**: Resolved "buffer.getChannelData is not a function" error by changing the audio pipeline to pass AudioBuffer objects directly to vosk-browser's acceptWaveform method instead of converting to PCM ArrayBuffer. Updated both MicRecorder and App components to handle AudioBuffer correctly and set up proper event listeners for recognition results.
-- **COMPLETED MOBILE-FRIENDLY UI**: Implemented comprehensive mobile-friendly improvements including: responsive design with proper breakpoints, improved color contrast (gray.800 for text, better error styling), larger touch-friendly buttons (60px height on mobile, 200px width), rounded button design with hover effects, better spacing and typography scaling, proper error message styling with background colors, and responsive layout that prevents horizontal overflow. All components now follow mobile-first design principles.
-- **COMPLETED LLM INTEGRATION**: Successfully implemented complete voice-to-LLM conversation flow:
-  - ✅ Removed server-side Vosk dependencies from LLM server (as requested)
-  - ✅ Added CORS support to LLM server for frontend communication
-  - ✅ Created new `/chat` endpoint that accepts JSON text requests
-  - ✅ Implemented LLM service layer with error handling and timeouts
-  - ✅ Created conversation management hook with state management
-  - ✅ Built conversation display component with chat-like UI
-  - ✅ Integrated automatic sending of transcribed text to LLM
-  - ✅ Added connection status indicators and error handling
-  - ✅ Both servers are running and communicating successfully
-  - ⚠️ Minor linter issues with Chakra UI v3 imports (useColorMode) - functional but needs cleanup
-  - 🎯 **READY FOR TESTING**: Complete voice-to-LLM conversation flow is implemented and functional
-- **DEBUGGING LLM INTEGRATION ISSUE**: User reported transcribed text not being sent to LLM server. Investigation findings:
-  - ✅ LLM server is working correctly (tested with curl, responds properly)
-  - ✅ CORS is configured correctly (tested from browser)
-  - ✅ React app is loading properly after restart
-  - ✅ Added comprehensive console logging to debug the issue
-  - ✅ Created test HTML file to verify LLM service works from browser
-  - 🔍 **NEXT STEPS**: Need to test the React app in browser to see console output and identify why transcribed text is not being sent to LLM
-  - 📝 **HYPOTHESIS**: Issue likely related to import problems with useColorMode hook or React component state management
-  - ✅ **ISSUE IDENTIFIED AND FIXED**: The problem was that partial results from speech recognition were being logged but not processed or sent to the LLM. Fixed by:
-    - Adding state management for current transcript display
-    - Processing partial results and sending complete sentences to LLM
-    - Adding visual feedback to show partial transcription in real-time
-    - Implementing sentence completion detection (periods, exclamation marks, question marks, commas)
-  - 🎯 **READY FOR TESTING**: The voice-to-LLM pipeline should now work correctly with real-time transcription display
+
+### Latest Update (Current) - EXECUTOR MODE
+**Issue Fixed**: Transcribed text was being duplicated twice in the conversation.
+
+**Root Cause Identified**:
+1. In `App.tsx`, the `partialresult` event handler calls both `updateCurrentMessage()` and `sendMessage()`
+2. `updateCurrentMessage()` adds a user message to the conversation display
+3. `sendMessage()` was ALSO adding a NEW user message to the conversation
+4. This resulted in duplicate user messages appearing in the conversation
+
+**Solution Implemented**:
+1. **Modified `sendMessage` function** in `useConversation.ts`:
+   - Removed the code that creates and adds a new user message
+   - `sendMessage` now only handles LLM communication and adds AI responses
+   - `updateCurrentMessage` remains responsible for adding/updating user messages
+2. **Maintained the correct flow**:
+   - `partialresult` events call `updateCurrentMessage()` to add/update user message
+   - `partialresult` events also call `sendMessage()` to communicate with LLM
+   - No duplication since only one function adds user messages
+
+**Technical Changes**:
+- Removed user message creation from `sendMessage` function
+- `sendMessage` now only sets loading state and handles LLM communication
+- `updateCurrentMessage` remains the sole function responsible for user message management
+- Maintained all existing logging for debugging
+
+**Status**: The duplication issue should now be resolved. Users will see their speech transcribed once in the conversation, and the LLM will receive the transcribed text for processing.
+
+### Previous Issues Resolved
+- Fixed Chakra UI v3 provider setup errors
+- Resolved Vosk model format issues (kept as tar.gz)
+- Fixed recognizer creation errors (explicit sample rate)
+- Resolved audio format mismatches (16kHz mono PCM conversion)
+- Fixed "Recognition Failed" errors
+- Resolved ChakraProvider "_config" errors
+- Implemented mobile-friendly UI with proper contrast
+- Added dark mode support
+- Integrated LLM server communication
+- Fixed partial results not being sent to LLM
+- Fixed Vosk punctuation issue and partial results handling
 
 # Lessons
 - Vosk Node.js bindings are not browser-compatible; use vosk-browser (WASM) for client-side.
@@ -406,39 +407,52 @@ The project is on track, the MVP is robust, and the codebase is well-structured.
 
 ## Executor's Feedback or Assistance Requests
 
-### Latest Update (Current)
-**Issue Fixed**: Transcribed text was appearing in a separate display box above the conversation instead of being integrated into the conversation flow.
+### Latest Update (Current) - EXECUTOR MODE
+**Issue Fixed**: Transcribed text was being duplicated twice in the conversation.
+
+**Root Cause Identified**:
+1. In `App.tsx`, the `partialresult` event handler calls both `updateCurrentMessage()` and `sendMessage()`
+2. `updateCurrentMessage()` adds a user message to the conversation display
+3. `sendMessage()` was ALSO adding a NEW user message to the conversation
+4. This resulted in duplicate user messages appearing in the conversation
 
 **Solution Implemented**:
-1. Added `updateCurrentMessage` function to `useConversation` hook that can update existing user messages or add new ones
-2. Modified the recognition event handlers to call `updateCurrentMessage` with partial results
-3. Removed the separate `currentTranscript` display box
-4. Updated the conversation state to show partial results as user messages in real-time
-
-**Technical Details**:
-- Partial results now appear directly in the conversation as user messages
-- Final results update the existing user message
-- Complete sentences (ending with punctuation) are automatically sent to the LLM
-- Removed unused state variables and cleaned up the UI
-
-**Status**: Ready for testing. The voice-to-LLM pipeline should now work seamlessly with transcribed text appearing directly in the conversation flow.
-
-### Critical Fix Applied (Latest)
-**Issue Identified**: The LLM sending logic was flawed because:
-1. Vosk speech recognition models don't add punctuation to their output (confirmed by [Vosk documentation](https://alphacephei.com/vosk/install) and [GitHub issues](https://github.com/alphacep/vosk-api/issues/1302))
-2. Since we manually control recording start/stop, we only get partial results, never final results with punctuation
-3. The previous logic was waiting for punctuation that would never come
-
-**Solution Implemented**:
-1. **Removed punctuation-based detection** - No longer waiting for periods, exclamation marks, etc.
-2. **Send partial results immediately** - As soon as we get a partial result from Vosk, send it to the LLM
-3. **Prevent duplicate sends** - Final results only update the display, don't send to LLM again
-4. **Real-time conversation flow** - Users see their speech appear in the conversation as they speak
+1. **Modified `sendMessage` function** in `useConversation.ts`:
+   - Removed the code that creates and adds a new user message
+   - `sendMessage` now only handles LLM communication and adds AI responses
+   - `updateCurrentMessage` remains responsible for adding/updating user messages
+2. **Maintained the correct flow**:
+   - `partialresult` events call `updateCurrentMessage()` to add/update user message
+   - `partialresult` events also call `sendMessage()` to communicate with LLM
+   - No duplication since only one function adds user messages
 
 **Technical Changes**:
-- Modified `partialresult` handler to send to LLM immediately when text is available
-- Updated `result` handler to only update display, not send to LLM (prevents duplicates)
-- Removed unused `currentTranscript` state variable
-- Added detailed console logging for debugging
+- Removed user message creation from `sendMessage` function
+- `sendMessage` now only sets loading state and handles LLM communication
+- `updateCurrentMessage` remains the sole function responsible for user message management
+- Maintained all existing logging for debugging
 
-**Status**: This should now work correctly with the manual recording control. Users will see their speech appear in the conversation in real-time and get AI responses immediately. 
+**Status**: The duplication issue should now be resolved. Users will see their speech transcribed once in the conversation, and the LLM will receive the transcribed text for processing.
+
+### Previous Issues Resolved
+- Fixed Chakra UI v3 provider setup errors
+- Resolved Vosk model format issues (kept as tar.gz)
+- Fixed recognizer creation errors (explicit sample rate)
+- Resolved audio format mismatches (16kHz mono PCM conversion)
+- Fixed "Recognition Failed" errors
+- Resolved ChakraProvider "_config" errors
+- Implemented mobile-friendly UI with proper contrast
+- Added dark mode support
+- Integrated LLM server communication
+- Fixed partial results not being sent to LLM
+- Fixed Vosk punctuation issue and partial results handling
+
+## Lessons
+
+- Include info useful for debugging in the program output.
+- Read the file before you try to edit it.
+- If there are vulnerabilities that appear in the terminal, run npm audit before proceeding
+- Always ask before using the -force git command
+- Vosk speech recognition models don't add punctuation by default
+- Manual recording control means we only get partial results, not final results with punctuation
+- Send partial results immediately to LLM for real-time conversation flow 

@@ -75,18 +75,10 @@ export function useConversation() {
             return;
         }
 
-        const userMessage: ConversationMessage = {
-            id: Date.now().toString(),
-            text: text.trim(),
-            timestamp: new Date().toISOString(),
-            type: 'user',
-        };
-
-        console.log("Adding user message to state:", userMessage);
-
+        // Don't add a new user message here since updateCurrentMessage already did that
+        // Just set loading state and send to LLM
         setState(prev => ({
             ...prev,
-            messages: [...prev.messages, userMessage],
             isLoading: true,
             error: null,
         }));
