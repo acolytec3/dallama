@@ -1,15 +1,13 @@
 import path from "path";
 import { fileURLToPath } from "url";
 import Fastify from "fastify";
-import * as vosk from "vosk-lib";
+import cors from "@fastify/cors";
 
 import chalk from "chalk";
 import { getLlama, LlamaChatSession, resolveModelFile } from "node-llama-cpp";
 
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const modelsDirectory = path.join(__dirname, "..", "models");
-
 
 const llama = await getLlama();
 
@@ -25,63 +23,68 @@ const llm = await llama.loadModel({ modelPath });
 console.log(chalk.yellow("Creating context..."));
 const context = await llm.createContext();
 
-
 const session = new LlamaChatSession({
     contextSequence: context.getSequence(),
-    // systemPrompt: q
 });
-const modelDir = "./models/vosk-model-small-en-us-0.15";
-
-const model = new vosk.Model(modelDir);
 
 const fastify = Fastify({ logger: false });
 
+// Register CORS plugin
+await fastify.register(cors, {
+    origin: ["http://localhost:5173", "http://127.0.0.1:5173"], // Vite dev server
+    methods: ["GET", "POST"],
+    credentials: true
+});
+
 fastify.get("/", () => {
     return {
-        message: "Hello from vosk"
+        message: "Hello from LLM chat server",
+        status: "ready"
     }
-})
+});
 
-fastify.addContentTypeParser("application/octet-stream", { parseAs: "buffer" }, function (req, body, done) {
-    done(null, body)
-})
+// LLM chat endpoint for transcribed text
+fastify.post("/chat", async (request, reply) => {
+    try {
+        const { text, conversationId } = request.body as { text?: string; conversationId?: string };
 
-fastify.post("/transcribe", async (request) => {
-    if (request.body === null) {
-        return {
-            code: 400,
-            message: "nothing received"
+        if (!text || text.trim() === "") {
+            return reply.status(400).send({
+                error: "No text provided",
+                message: "Please provide transcribed text in the request body"
+            });
         }
-    }
 
-    const bytes = request
+        console.log(chalk.blue(`Processing text: "${text}"`));
 
-    const rec = new vosk.Recognizer({ model: model, sampleRate: 16000 });
-    const result = await rec.acceptWaveformAsync(bytes.body as Buffer);
+        const response = await session.prompt(text);
 
-    const q = rec.result()
-    console.log(q.text)
-
-    if (q.text !== undefined) {
-        const response = await session.prompt(q.text);
+        console.log(chalk.green(`LLM Response: "${response}"`));
 
         return {
-            message: response
-        }
+            message: response,
+            conversationId: conversationId || "default",
+            timestamp: new Date().toISOString()
+        };
+
+    } catch (error) {
+        console.error(chalk.red("Error processing chat request:"), error);
+        return reply.status(500).send({
+            error: "Internal server error",
+            message: error instanceof Error ? error.message : "Unknown error occurred"
+        });
     }
-})
+});
 
 process.on("SIGINT", () => {
     console.log("Shutting down server")
     process.exit(0)
-})
-
+});
 
 const main = async () => {
     await fastify.listen({ port: 3000 }, async (err, address) => {
-        console.log("Server is running on port 3000")
+        console.log("LLM Chat Server is running on port 3000")
+    });
+};
 
-    })
-
-}
 main();

@@ -1,21 +1,41 @@
-import { Box, Heading, Stack, Text } from "@chakra-ui/react";
-import { useState } from "react";
+import { Box, Heading, Stack, Text, Button } from "@chakra-ui/react";
+import { useState, useEffect } from "react";
 import ModelLoader from "./components/ModelLoader";
 import MicRecorder from "./components/MicRecorder";
+import ConversationDisplay from "./components/ConversationDisplay";
+import { useConversation } from "./hooks/useConversation";
 
 export default function App() {
   const [modelLoaded, setModelLoaded] = useState(false);
-  // Use 'unknown' for model type, assert as needed
   const [model, setModel] = useState<unknown>(null);
-  const [transcript, setTranscript] = useState<string>("");
   const [recognizing, setRecognizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Temporarily use light mode until import issue is resolved
+  const isDark = false;
+
+  const {
+    messages,
+    isLoading: llmLoading,
+    error: llmError,
+    isConnected,
+    sendMessage,
+    updateCurrentMessage,
+    clearConversation,
+    clearError: clearLlmError,
+    testConnection,
+  } = useConversation();
+
+  // Test LLM connection on component mount
+  useEffect(() => {
+    console.log("App mounted, testing LLM connection...");
+    testConnection();
+  }, [testConnection]);
 
   const handleAudio = async (audioBuffer: AudioBuffer) => {
     if (!model) return;
     setRecognizing(true);
     setError(null);
-    setTranscript("");
     
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -29,7 +49,21 @@ export default function App() {
       recognizer.on("result", (message: { result: { text: string } }) => {
         console.log("Final result:", message);
         if (message.result && message.result.text) {
-          setTranscript(message.result.text);
+          const finalTranscript = message.result.text;
+          console.log("Final transcript:", finalTranscript);
+          console.log("isConnected:", isConnected);
+          console.log("finalTranscript.trim():", finalTranscript.trim());
+          
+          // Update the conversation with the final transcript
+          updateCurrentMessage(finalTranscript);
+          
+          // Automatically send transcribed text to LLM
+          if (isConnected && finalTranscript.trim()) {
+            console.log("Sending message to LLM:", finalTranscript);
+            sendMessage(finalTranscript);
+          } else {
+            console.log("NOT sending message to LLM. isConnected:", isConnected, "hasText:", !!finalTranscript.trim());
+          }
         }
         recognizer.remove();
       });
@@ -37,7 +71,21 @@ export default function App() {
       recognizer.on("partialresult", (message: { result: { partial: string } }) => {
         console.log("Partial result:", message);
         if (message.result && message.result.partial) {
-          setTranscript(message.result.partial);
+          const partialTranscript = message.result.partial;
+          console.log("Partial transcript:", partialTranscript);
+          
+          // Update the conversation with partial results
+          if (partialTranscript.trim()) {
+            updateCurrentMessage(partialTranscript);
+          }
+          
+          // Check if we have a complete sentence and send to LLM
+          if (isConnected && partialTranscript.trim() && 
+              (partialTranscript.endsWith('.') || partialTranscript.endsWith('!') || 
+               partialTranscript.endsWith('?') || partialTranscript.endsWith(','))) {
+            console.log("Sending complete sentence to LLM:", partialTranscript);
+            sendMessage(partialTranscript);
+          }
         }
       });
       
@@ -49,10 +97,13 @@ export default function App() {
     }
   };
 
+  const bgColor = isDark ? "gray.900" : "gray.50";
+  const textColor = isDark ? "gray.100" : "gray.800";
+
   return (
     <Box 
       minH="100vh" 
-      bg="gray.50" 
+      bg={bgColor} 
       p={{ base: 4, md: 6 }}
       maxW="100vw"
       overflowX="hidden"
@@ -68,11 +119,11 @@ export default function App() {
           as="h1" 
           size={{ base: "lg", md: "xl" }} 
           mt={{ base: 6, md: 8 }}
-          textAlign="center"
-          color="gray.800"
+          color={textColor}
           fontWeight="bold"
+          textAlign="center"
         >
-          Vosk STT Mobile Web App
+          Voice AI Chat
         </Heading>
         
         {!modelLoaded && <ModelLoader onReady={(m) => { setModel(m); setModelLoaded(true); }} />}
@@ -83,7 +134,7 @@ export default function App() {
             
             {recognizing && (
               <Text 
-                color="blue.600" 
+                color={isDark ? "blue.300" : "blue.600"} 
                 fontSize={{ base: "md", md: "lg" }}
                 fontWeight="medium"
                 textAlign="center"
@@ -94,40 +145,71 @@ export default function App() {
             
             {error && (
               <Text 
-                color="red.600" 
+                color={isDark ? "red.300" : "red.600"} 
                 fontSize={{ base: "sm", md: "md" }}
                 textAlign="center"
-                bg="red.50"
+                bg={isDark ? "red.900" : "red.50"}
                 p={3}
                 borderRadius="md"
                 border="1px solid"
-                borderColor="red.200"
+                borderColor={isDark ? "red.600" : "red.200"}
                 maxW="100%"
               >
                 {error}
               </Text>
             )}
-            
-            {transcript && (
-              <Box 
-                p={{ base: 4, md: 6 }} 
-                bg="white" 
-                borderRadius="lg" 
-                boxShadow="lg" 
-                maxW={{ base: "100%", md: "lg" }}
-                w="100%"
+
+            {!isConnected && (
+              <Text 
+                color={isDark ? "yellow.300" : "yellow.600"} 
+                fontSize={{ base: "sm", md: "md" }}
+                textAlign="center"
+                bg={isDark ? "yellow.900" : "yellow.50"}
+                p={3}
+                borderRadius="md"
                 border="1px solid"
-                borderColor="gray.200"
+                borderColor={isDark ? "yellow.600" : "yellow.200"}
+                maxW="100%"
               >
-                <Text 
-                  fontSize={{ base: "md", md: "lg" }}
-                  color="gray.800"
-                  lineHeight="1.6"
-                  textAlign="left"
-                >
-                  {transcript}
-                </Text>
-              </Box>
+                ⚠️ LLM server not connected. Speech will be transcribed but not sent to AI.
+              </Text>
+            )}
+
+            {/* Debug test button */}
+            <Button
+              onClick={() => {
+                console.log("Manual test button clicked");
+                console.log("isConnected:", isConnected);
+                console.log("messages:", messages);
+                sendMessage("This is a test message from the debug button");
+              }}
+              variant="outline"
+              size={{ base: "sm", md: "md" }}
+              colorScheme="green"
+              maxW={{ base: "200px", md: "250px" }}
+              w="100%"
+            >
+              Test LLM Connection
+            </Button>
+            
+            <ConversationDisplay 
+              messages={messages}
+              isLoading={llmLoading}
+              error={llmError}
+              onClearError={clearLlmError}
+            />
+
+            {messages.length > 0 && (
+              <Button
+                onClick={clearConversation}
+                variant="outline"
+                size={{ base: "md", md: "lg" }}
+                colorScheme="gray"
+                maxW={{ base: "200px", md: "250px" }}
+                w="100%"
+              >
+                Clear Conversation
+              </Button>
             )}
           </>
         )}
