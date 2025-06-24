@@ -89,14 +89,17 @@ fastify.post("/chat", async (request, reply) => {
             }
             // Format results for LLM summarization
             const formattedResults = searchResults.map((r, i) => `${i + 1}. ${r.title}\n${r.description}\n${r.url}`).join("\n\n");
-            const summaryPrompt = `Summarize the following web search results for the query: "${searchQuery}". Provide a concise answer and cite sources by number in parentheses.\n\nResults:\n${formattedResults}`;
+            const summaryPrompt = `Summarize the following web search results for the query: "${searchQuery}". Be helpful in tone and provide a concise answer.\n\nResults:\n${formattedResults}`;
+            const summaryStart = Date.now();
             response = await session.prompt(summaryPrompt, {
-                maxTokens: 180,
-                temperature: 0.3,
-                topP: 0.8,
-                topK: 40,
+                maxTokens: 100,
+                temperature: 0.2,
+                topP: 0.7,
+                topK: 20,
                 repeatPenalty: { penalty: 1.1 },
             });
+            const summaryTime = Date.now() - summaryStart;
+            console.log(chalk.yellow(`[LLM] Summary generation took ${summaryTime}ms`));
         } else {
             // Normal LLM response
             response = await session.prompt(text, {

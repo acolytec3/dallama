@@ -24,7 +24,7 @@
   "scripts": {
     "postinstall": "npm run models:pull",
     "models:pull": "node-llama-cpp pull --dir ./models \"hf:bartowski/gemma-2-2b-it-GGUF/gemma-2-2b-it-Q6_K_L.gguf\"",
-    "start": "vite-node ./src/index.ts",
+    "start": "npx tsx src/vosk.ts",
     "start:build": "node ./dist/index.ts",
     "prebuild": "rimraf ./dist ./tsconfig.tsbuildinfo",
     "build": "tsc --build tsconfig.json --force",

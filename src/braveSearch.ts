@@ -35,6 +35,7 @@ export async function braveWebSearch(query: string, options?: { count?: number }
     const endpoint = `https://api.search.brave.com/res/v1/web/search`;
     const params = new URLSearchParams({ q: query, count: String(count) });
 
+    console.log(`[BraveSearch] Sending request: query="${query}", count=${count}`);
     const response = await fetch(`${endpoint}?${params.toString()}`, {
         method: 'GET',
         headers: {
@@ -45,12 +46,20 @@ export async function braveWebSearch(query: string, options?: { count?: number }
 
     if (!response.ok) {
         const errorText = await response.text();
+        console.error(`[BraveSearch] API error: ${response.status} ${response.statusText} - ${errorText}`);
         throw new Error(`Brave Search API error: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
     const data = await response.json() as any;
     if (!data.web || !Array.isArray(data.web.results)) {
+        console.error('[BraveSearch] Unexpected API response format', data);
         throw new Error('Unexpected Brave Search API response format');
+    }
+
+    console.log(`[BraveSearch] Received ${data.web.results.length} results.`);
+    if (data.web.results.length > 0) {
+        const first = data.web.results[0];
+        console.log(`[BraveSearch] First result: ${first.title} (${first.url})`);
     }
 
     return data.web.results.map((item: any) => ({
