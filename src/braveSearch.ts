@@ -1,3 +1,5 @@
+import 'dotenv/config';
+
 let lastQueryTime = 0;
 
 export interface BraveSearchResult {
@@ -18,7 +20,7 @@ export function isWebSearchPrompt(text: string): boolean {
 export async function braveWebSearch(query: string, options?: { count?: number }): Promise<BraveSearchResult[]> {
     const apiKey = process.env.BRAVE_SEARCH_API_KEY;
     if (!apiKey) {
-        throw new Error('Brave Search API key not set. Please set BRAVE_SEARCH_API_KEY in your environment.');
+        throw new Error('Brave Search API key not set. Please set BRAVE_SEARCH_API_KEY in your environment or .env file.');
     }
 
     // Rate limiting: ensure at least 1 second between queries
