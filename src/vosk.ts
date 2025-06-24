@@ -5,6 +5,7 @@ import cors from "@fastify/cors";
 
 import chalk from "chalk";
 import { getLlama, LlamaChatSession, resolveModelFile } from "node-llama-cpp";
+import { braveWebSearch, isWebSearchPrompt, BraveSearchResult } from "./braveSearch.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const modelsDirectory = path.join(__dirname, "..", "models");
@@ -62,18 +63,50 @@ fastify.post("/chat", async (request, reply) => {
         }
 
         console.log(chalk.blue(`Processing text: "${text}"`));
-
-        // Start timing for performance monitoring
         const startTime = Date.now();
 
-        // Optimized generation parameters for faster, more concise responses
-        const response = await session.prompt(text, {
-            maxTokens: 150, // Limit response length to ~100 words
-            temperature: 0.3, // Lower temperature for more deterministic responses
-            topP: 0.8, // Slightly lower top_p for faster sampling
-            topK: 40, // Limit top_k for faster token selection
-            repeatPenalty: { penalty: 1.1 }, // Prevent repetitive responses
-        });
+        let response: string;
+        if (isWebSearchPrompt(text)) {
+            // Extract the query after 'search for'
+            const match = text.match(/^\s*search for\s*(.*)$/i);
+            const searchQuery = match && match[1] ? match[1].trim() : "";
+            if (!searchQuery) {
+                return reply.status(400).send({
+                    error: "No search query provided",
+                    message: "Please provide a query after 'search for'"
+                });
+            }
+            console.log(chalk.magenta(`Performing Brave web search for: "${searchQuery}"`));
+            let searchResults: BraveSearchResult[] = [];
+            try {
+                searchResults = await braveWebSearch(searchQuery, { count: 5 });
+            } catch (err) {
+                console.error(chalk.red("Brave Search API error:"), err);
+                return reply.status(502).send({
+                    error: "Web search failed",
+                    message: err instanceof Error ? err.message : "Unknown error from Brave Search API"
+                });
+            }
+            // Format results for LLM summarization
+            const formattedResults = searchResults.map((r, i) => `${i + 1}. ${r.title}\n${r.description}\n${r.url}`).join("\n\n");
+            const summaryPrompt = `Summarize the following web search results for the query: "${searchQuery}". Provide a concise answer and cite sources by number in parentheses.\n\nResults:\n${formattedResults}`;
+            response = await session.prompt(summaryPrompt, {
+                maxTokens: 180,
+                temperature: 0.3,
+                topP: 0.8,
+                topK: 40,
+                repeatPenalty: { penalty: 1.1 },
+            });
+        } else {
+            // Normal LLM response
+            response = await session.prompt(text, {
+                maxTokens: 150, // Limit response length to ~100 words
+                temperature: 0.3, // Lower temperature for more deterministic responses
+                topP: 0.8, // Slightly lower top_p for faster sampling
+                topK: 40, // Limit top_k for faster token selection
+                repeatPenalty: { penalty: 1.1 }, // Prevent repetitive responses
+            });
+        }
 
         const responseTime = Date.now() - startTime;
         console.log(chalk.green(`LLM Response: "${response}"`));

@@ -456,3 +456,95 @@ The project is on track, the MVP is robust, and the codebase is well-structured.
 - Vosk speech recognition models don't add punctuation by default
 - Manual recording control means we only get partial results, not final results with punctuation
 - Send partial results immediately to LLM for real-time conversation flow 
+
+# Planner: Web Search Integration Feature
+
+## Background and Motivation
+Users sometimes ask questions that require up-to-date or external information not present in the local LLM model. To improve the model's usefulness, we want to add a feature that allows the backend to perform a web search (e.g., using Brave Search API) and summarize the results. This should only be triggered when the user explicitly requests a web search (e.g., "search the web for..." or "web search:").
+
+## Key Challenges and Analysis
+- **API Access**: Need to use a reliable web search API (e.g., Brave Search, Bing, Google Custom Search). Requires API key and handling rate limits.
+- **Prompt Detection**: The backend must accurately detect when a user is explicitly requesting a web search, to avoid unnecessary API calls.
+- **Result Summarization**: The model should summarize search results in a concise, helpful way, not just return raw links.
+- **Latency**: Web search and summarization should be fast enough for a conversational experience.
+- **Error Handling**: Handle API failures, empty results, or blocked requests gracefully.
+- **Security**: Avoid leaking sensitive data in search queries; sanitize user input.
+
+## High-level Task Breakdown
+1. **Research and Select Web Search API**
+   - Evaluate Brave Search, Bing, or Google Custom Search APIs
+   - Obtain API key and test basic queries
+   - Success: Able to fetch search results programmatically
+
+2. **Implement Web Search Utility in Backend**
+   - Create a function to query the chosen search API
+   - Parse and format results (title, snippet, URL)
+   - Success: Backend can fetch and parse search results
+
+3. **User Prompt Detection Logic**
+   - Implement logic to detect explicit web search requests (e.g., regex for "search the web for ...")
+   - Add tests for prompt detection
+   - Success: Only explicit requests trigger web search
+
+4. **Summarization Pipeline**
+   - Pass search results to the LLM for summarization
+   - Design prompt to instruct the model to summarize and cite sources
+   - Success: Model returns a concise summary with references
+
+5. **Integrate with Conversation Flow**
+   - Update backend to intercept and handle web search requests
+   - Return summarized results to the user in the conversation
+   - Success: User receives summarized web search results in chat
+
+6. **Error and Rate Limit Handling**
+   - Handle API errors, empty results, and rate limits gracefully
+   - Inform user if search fails or is unavailable
+   - Success: Robust error handling and user feedback
+
+7. **Testing and Validation**
+   - Unit and integration tests for all new logic
+   - Manual testing with various search prompts
+   - Success: Feature works reliably and only triggers on explicit requests
+
+## Success Criteria
+- [ ] Web search is only triggered by explicit user requests
+- [ ] Search results are fetched, parsed, and summarized accurately
+- [ ] Summaries are concise, relevant, and cite sources
+- [ ] Errors are handled gracefully
+- [ ] No impact on normal conversation flow when not searching
+- [ ] Feature passes all tests and manual review 
+
+## Project Status Board (Web Search Integration)
+- [x] Research and Select Web Search API
+- [x] Implement Web Search Utility in Backend
+- [x] User Prompt Detection Logic
+- [ ] Summarization Pipeline
+- [ ] Integrate with Conversation Flow
+- [ ] Error and Rate Limit Handling
+- [ ] Testing and Validation
+
+### Executor's Feedback or Assistance Requests (Web Search Integration)
+
+**Step 1 Complete: Research and Select Web Search API**
+- Chosen API: **Brave Search API** ([official docs](https://brave.com/search/api/))
+- Free tier: 2,000 queries/month, 1 query/sec
+- API endpoint: https://api.search.brave.com/
+- To get started:
+  1. Sign up for a Brave Search API account at [Brave Search API](https://brave.com/search/api/)
+  2. Obtain your API key from the dashboard
+  3. Review the [API documentation](https://brave.com/search/api/) for request/response formats
+- Next step: Implement a backend utility to query the Brave Search API using the API key 
+
+**Step 2 Complete: Implement Web Search Utility in Backend**
+- `braveWebSearch(query, options)` utility is implemented in `src/braveSearch.ts`
+- Reads API key from `BRAVE_SEARCH_API_KEY` environment variable
+- Enforces 1 query/sec rate limit using sleep-based throttling
+- Returns parsed search results (title, url, description)
+- Handles API errors and unexpected response formats
+
+**Step 3 Complete: User Prompt Detection Logic**
+- `isWebSearchPrompt(text)` utility is implemented in `src/braveSearch.ts`
+- Returns true only if the prompt starts with 'search for' (case-insensitive, allows leading whitespace)
+- Ensures web search is only triggered by explicit user requests at the start of the prompt
+
+**Next step:** Implement the summarization pipeline to pass search results to the LLM and return a concise, referenced summary. 
