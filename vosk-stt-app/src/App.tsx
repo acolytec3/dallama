@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import ModelLoader from "./components/ModelLoader";
 import MicRecorder from "./components/MicRecorder";
 import ConversationDisplay from "./components/ConversationDisplay";
+import LLMModeToggle from "./components/LLMModeToggle";
 import { useConversation } from "./hooks/useConversation";
 
 export default function App() {
@@ -19,11 +20,14 @@ export default function App() {
     isLoading: llmLoading,
     error: llmError,
     isConnected,
+    llmMode,
+    localLLMStatus,
     sendMessage,
     updateCurrentMessage,
     clearConversation,
     clearError: clearLlmError,
     testConnection,
+    setLLMMode,
   } = useConversation();
 
   // Test LLM connection on component mount
@@ -107,6 +111,13 @@ export default function App() {
         
         {modelLoaded && (
           <>
+            <LLMModeToggle
+              mode={llmMode}
+              onModeChange={setLLMMode}
+              isConnected={isConnected}
+              localLLMStatus={localLLMStatus}
+            />
+            
             <MicRecorder onAudio={handleAudio} />
             
             {recognizing && (
@@ -148,7 +159,7 @@ export default function App() {
                 borderColor={isDark ? "yellow.600" : "yellow.200"}
                 maxW="100%"
               >
-                ⚠️ LLM server not connected. Speech will be transcribed but not sent to AI.
+                ⚠️ AI not connected. Speech will be transcribed but not sent to AI.
               </Text>
             )}
 

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { llmService, ChatRequest, ChatResponse } from '../services/llmService';
+import { unifiedLLMService, ChatRequest, ChatResponse, LLMMode } from '../services/unifiedLLMService';
 
 export interface ConversationMessage {
     id: string;
@@ -13,6 +13,8 @@ export interface ConversationState {
     isLoading: boolean;
     error: string | null;
     isConnected: boolean;
+    llmMode: LLMMode;
+    localLLMStatus: { isInitializing: boolean; isReady: boolean };
 }
 
 export function useConversation() {
@@ -21,18 +23,28 @@ export function useConversation() {
         isLoading: false,
         error: null,
         isConnected: false,
+        llmMode: unifiedLLMService.getMode(),
+        localLLMStatus: unifiedLLMService.getLocalLLMStatus(),
     });
 
     const testConnection = useCallback(async () => {
         try {
-            console.log("Testing LLM server connection...");
-            const isConnected = await llmService.testConnection();
-            console.log("LLM server connection test result:", isConnected);
-            setState(prev => ({ ...prev, isConnected }));
+            console.log("Testing LLM connection...");
+            const isConnected = await unifiedLLMService.testConnection();
+            console.log("LLM connection test result:", isConnected);
+            setState(prev => ({
+                ...prev,
+                isConnected,
+                localLLMStatus: unifiedLLMService.getLocalLLMStatus()
+            }));
             return isConnected;
         } catch {
-            console.log("LLM server connection test failed");
-            setState(prev => ({ ...prev, isConnected: false }));
+            console.log("LLM connection test failed");
+            setState(prev => ({
+                ...prev,
+                isConnected: false,
+                localLLMStatus: unifiedLLMService.getLocalLLMStatus()
+            }));
             return false;
         }
     }, []);
@@ -89,9 +101,9 @@ export function useConversation() {
                 conversationId: 'default', // Could be made configurable
             };
 
-            console.log("Sending request to LLM server:", request);
-            const response: ChatResponse = await llmService.sendMessage(request);
-            console.log("Received response from LLM server:", response);
+            console.log("Sending request to LLM:", request);
+            const response: ChatResponse = await unifiedLLMService.sendMessage(request);
+            console.log("Received response from LLM:", response);
 
             const aiMessage: ConversationMessage = {
                 id: (Date.now() + 1).toString(),
@@ -135,6 +147,15 @@ export function useConversation() {
         }));
     }, []);
 
+    const setLLMMode = useCallback((mode: LLMMode) => {
+        unifiedLLMService.setMode(mode);
+        setState(prev => ({
+            ...prev,
+            llmMode: mode,
+            localLLMStatus: unifiedLLMService.getLocalLLMStatus(),
+        }));
+    }, []);
+
     return {
         ...state,
         sendMessage,
@@ -142,5 +163,6 @@ export function useConversation() {
         clearConversation,
         clearError,
         testConnection,
+        setLLMMode,
     };
 } 
