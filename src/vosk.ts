@@ -14,7 +14,7 @@ const llama = await getLlama();
 
 console.log(chalk.yellow("Resolving model file..."));
 const modelPath = await resolveModelFile(
-    "hf:bartowski/gemma-2-2b-it-GGUF/gemma-2-2b-it-Q6_K_L.gguf",
+    "gemma-3-270m-it-Q8_0.gguf",
     modelsDirectory
 );
 
