@@ -1,0 +1,42 @@
+[Unit]
+Description=Pi4 Voice Assistant
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/voice-assistant
+ExecStart=/usr/bin/node dist/main.js
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=voice-assistant
+
+# Environment variables
+Environment=NODE_ENV=production
+Environment=SERVER_URL=http://192.168.1.100:3000
+Environment=AUDIO_INPUT_DEVICE=default
+Environment=AUDIO_OUTPUT_DEVICE=default
+Environment=WAKE_WORD_ENABLED=true
+Environment=WAKE_WORD_PHRASE=hey assistant
+Environment=VAD_ENABLED=true
+Environment=LOG_LEVEL=info
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/pi/voice-assistant
+ReadWritePaths=/var/log
+
+# Resource limits
+LimitNOFILE=65536
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target
+

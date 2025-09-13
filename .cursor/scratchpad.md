@@ -1,550 +1,510 @@
-# Scratchpad: Vosk STT Mobile Web App (React + Chakra + Vite)
+# Multi-Frontend AI Agent Project Plan
 
 ## Project Overview
-A mobile-friendly, browser-based speech-to-text (STT) web app using Vosk WebAssembly (WASM), React, Chakra UI, and Vite. The app will run all STT in-browser, support offline/PWA mode, and provide a modern, accessible UI.
+A hobbyist AI agent system running on local consumer hardware with multiple frontend interfaces:
+- Mobile web app (PWA) for Android/iOS devices
+- Headless voice application for Raspberry Pi 4 (Alexa-style)
+- All sharing the same Gemma 3N LLM backend with Kokoro TTS
 
----
+## Current State Analysis
 
-## Roadmap & Phases
+### Existing Infrastructure
+- **Backend**: Fastify server (`src/vosk.ts`) with Gemma 3 270M IT model
+- **Web Frontend**: React + Vite + Chakra UI (`vosk-stt-app/`) with client-side Vosk STT
+- **CLI Interface**: Command-line chat (`src/index.ts`)
+- **Web Search**: Brave Search API integration
+- **Voice Processing**: Client-side Vosk STT for speech recognition
 
-### Phase 1: Project Initialization & Setup
-- [ ] Scaffold Vite + React + TypeScript project
-- [ ] Install Chakra UI and configure provider
-- [ ] Install vosk-browser and add a small Vosk model to `public/`
-- [ ] Set up Vite PWA plugin
-- [ ] Initialize Git and .cursor/ structure
+### Current Capabilities
+- Text and voice chat with LLM
+- Web search via Brave Search API
+- Real-time speech-to-text
+- Conversation history
+- CORS-enabled for multiple frontends
 
-### Phase 2: Core STT Functionality
-- [ ] Integrate vosk-browser for WASM STT
-- [ ] Implement ModelLoader component (loads WASM/model, shows progress)
-- [ ] Implement MicRecorder component (mic permissions, audio capture, push-to-talk UI)
-- [ ] Implement TranscriptDisplay (live/final transcript, copy/share)
-- [ ] Wire up audio pipeline: mic → recognizer → transcript
+## Revised Architecture Plan
 
-### Phase 3: UI/UX & Accessibility
-- [ ] Use Chakra UI for responsive, mobile-friendly layout
-- [ ] Add dark mode support (Chakra color mode)
-- [ ] Implement accessible controls (aria-labels, keyboard nav, etc.)
-- [ ] Add settings drawer (language/model selection, theme)
+### 1. Backend Enhancements
 
-### Phase 4: PWA & Offline Support
-- [ ] Configure Vite PWA plugin for offline installability
-- [ ] Cache WASM/model files for offline use
-- [ ] Test installability and offline behavior on mobile
-
-### Phase 5: Polish & Optional Features
-- [ ] Add transcript export (copy/share/download)
-- [ ] (Optional) Integrate LLM/chat API for transcript-based chat
-- [ ] Add onboarding/help screens
-- [ ] Final QA and accessibility audit
-
----
-
-## Modular Structure
-
-- `src/components/`
-  - `AppShell.tsx` — Layout, navigation, theme, PWA install prompt
-  - `ModelLoader.tsx` — Loads Vosk WASM/model, shows progress
-  - `MicRecorder.tsx` — Handles mic permissions, audio capture, push-to-talk UI
-  - `TranscriptDisplay.tsx` — Shows transcript, copy/share actions
-  - `Settings.tsx` — Language/model selection, theme, privacy info
-- `src/voskWorker.ts` — (if using a custom worker for Vosk)
-- `public/model.tar.gz` — Vosk model file
-
----
-
-## Task Tracking
-- Each phase will be tracked as a checklist
-- Unique task IDs and dependencies will be added as needed
-- Status will be updated in real-time as development progresses
-
----
-
-## Version
-[v1.0.0] Initial project plan and roadmap defined
-
----
-
-# Background and Motivation
-The goal is to build a mobile-friendly web app using Vite, React, TypeScript, and Chakra UI that performs speech-to-text transcription entirely on the client side using Vosk. The app should have a simple UI: a record button and a transcript display. The implementation should reference the logic in `src/vosk.ts`, which currently demonstrates server-side Vosk usage, and adapt it for browser-based, client-side operation.
-
-**NEW FEATURE REQUEST**: Integrate the Vosk STT app with the LLM server running in `src/vosk.ts`. The app should send transcribed text to the LLM server, receive the LLM's response, and display it in the app. This creates a complete voice-to-LLM conversation flow where users can speak, get their speech transcribed, and receive AI responses.
-
-# Key Challenges and Analysis
-- Vosk's official Node.js bindings (as in `src/vosk.ts`) are not browser-compatible; we must use a WASM build (e.g., vosk-browser).
-- Loading Vosk models in the browser requires handling large assets and async initialization.
-- Real-time audio capture and streaming to the recognizer must be handled efficiently and in a mobile-friendly way.
-- UI must be touch-friendly and accessible.
-- The app must work offline after initial load (PWA support).
-- **LLM INTEGRATION CHALLENGES**:
-  - The LLM server in `src/vosk.ts` runs on port 3000 and expects POST requests to `/transcribe`
-  - Need to establish HTTP communication between the React app and the Node.js server
-  - Handle CORS issues between frontend and backend
-  - Manage loading states and error handling for LLM requests
-  - Design UI to display both user transcript and LLM response
-  - Handle conversation flow and context management
-
-# High-level Task Breakdown
-1. **Set up Vite + React + TypeScript + Chakra UI project**
-   - Success: Project runs, Chakra UI is integrated, and a basic page renders.
-2. **Upgrade Chakra UI to v3 and refactor layout to use 'gap' instead of 'spacing'**
-   - Success: Chakra UI v3 is integrated and layout refactoring is complete.
-3. **Add vosk-browser and download a small Vosk model**
-   - Success: Model file is present in `public/` and can be fetched by the app.
-4. **Implement ModelLoader component**
-   - Loads WASM and model, shows progress/spinner.
-   - Success: Model loads without error, UI updates when ready.
-5. **Implement MicRecorder component**
-   - Handles mic permissions, audio capture, and a record button.
-   - Success: User can start/stop recording, and audio data is captured.
-6. **Integrate vosk-browser recognizer**
-   - Stream audio to recognizer, receive partial/final results.
-   - Success: Recognizer returns transcript for spoken audio.
-7. **Implement TranscriptDisplay component**
-   - Shows live/final transcript, allows copy/share.
-   - Success: Transcript is visible and updates as user speaks.
-8. **Make UI mobile-friendly and accessible**
-   - Use Chakra UI for layout, large touch targets, aria-labels, etc.
-   - Success: App is usable on mobile and passes basic accessibility checks.
-9. **Add PWA support for offline use**
-   - Configure Vite PWA plugin, cache model/WASM files.
-   - Success: App can be installed and works offline after first load.
-10. **Test and polish**
-   - Manual and automated tests for all features.
-   - Success: All features work as intended, no major bugs.
-
-**NEW TASK: LLM Integration**
-11. **Analyze Current LLM Server Setup**
-    - Review `src/vosk.ts` server implementation
-    - Understand the `/transcribe` endpoint API
-    - Identify data format requirements and response structure
-    - Success: Clear understanding of server API and requirements.
-12. **Configure CORS and Server Setup**
-    - Update the LLM server to handle CORS for frontend requests
-    - Ensure server accepts JSON requests instead of binary audio
-    - Test server connectivity from frontend
-    - Success: Server accepts requests from React app without CORS issues.
-13. **Create LLM Service Layer**
-    - Implement service to communicate with LLM server
-    - Handle HTTP requests, responses, and error states
-    - Add retry logic and timeout handling
-    - Success: Reliable communication with LLM server.
-14. **Update UI for Conversation Flow**
-    - Design conversation interface showing user transcript and AI response
-    - Add loading states for LLM requests
-    - Implement conversation history display
-    - Success: Clear conversation UI with proper loading states.
-15. **Integrate LLM Communication**
-    - Connect transcribed text to LLM service
-    - Handle LLM responses and display in UI
-    - Add error handling for failed LLM requests
-    - Success: Complete voice-to-LLM conversation flow.
-16. **Test and Optimize**
-    - Test conversation flow end-to-end
-    - Optimize response times and user experience
-    - Add conversation management features
-    - Success: Smooth, reliable voice-to-LLM conversation experience.
-
-# Project Status Board
-- [x] Set up Vite + React + TypeScript + Chakra UI project
-- [x] Upgrade Chakra UI to v3 and refactor layout to use 'gap' instead of 'spacing'
-- [x] Fix Chakra UI v3 provider setup (resolve '_config' error)
-- [x] Add vosk-browser and download a small Vosk model
-- [x] Fix Vosk model format (keep as tar.gz for vosk-browser)
-- [x] Fix recognizer configuration (resolve "undefined to float" error)
-- [x] Add audio playback and debugging features
-- [x] Implement ModelLoader component
-- [x] Implement MicRecorder component
-- [x] Integrate MicRecorder into main app
-- [x] Integrate vosk-browser recognizer
-- [x] Implement TranscriptDisplay component (inline)
-- [x] Make UI mobile-friendly and accessible
-- [x] **COMPLETED: Dark Mode Implementation**
-  - [x] Configure Chakra UI Color Mode System
-  - [x] Design Dark Mode Color Palette
-  - [x] Implement Dark Mode Button Styling
-  - [x] Update All Components for Dark Mode
-  - [x] Add Dark Mode Toggle
-  - [ ] Test Dark Mode Accessibility
-- [x] **COMPLETED: LLM Integration**
-  - [x] Analyze Current LLM Server Setup
-  - [x] Configure CORS and Server Setup
-  - [x] Create LLM Service Layer
-  - [x] Update UI for Conversation Flow
-  - [x] Integrate LLM Communication
-  - [🔄] Test and Optimize
-- [ ] Add PWA support for offline use
-- [ ] Test and polish
-
-# LLM Integration Feature Specification
-
-## Current System Analysis
-
-### LLM Server (`src/vosk.ts`)
-- **Port**: 3000
-- **Endpoint**: `POST /transcribe`
-- **Current Input**: Binary audio data (application/octet-stream)
-- **Current Output**: JSON with LLM response
-- **LLM Model**: Gemma-2-2b-it (via node-llama-cpp)
-- **Vosk Model**: vosk-model-small-en-us-0.15
-
-### Vosk STT App
-- **Port**: 5173 (Vite dev server)
-- **STT**: Client-side using vosk-browser WASM
-- **Output**: Transcribed text from speech
-- **UI**: React + Chakra UI with dark mode
-
-## Integration Architecture
-
-### Data Flow
-1. **User speaks** → MicRecorder captures audio
-2. **Audio processed** → Vosk-browser transcribes to text
-3. **Text sent** → HTTP POST to LLM server
-4. **LLM processes** → Generates response
-5. **Response received** → Displayed in conversation UI
-
-### API Design
-**Endpoint**: `POST http://localhost:3000/transcribe`
-**Request Format**:
-```json
-{
-  "text": "User's transcribed speech",
-  "conversationId": "optional-session-id"
-}
+#### Core Services
 ```
-**Response Format**:
-```json
-{
-  "message": "LLM response text",
-  "conversationId": "session-id"
-}
+src/
+├── server/
+│   ├── index.ts              # Main server entry point
+│   ├── config.ts             # Local network configuration
+│   ├── services/
+│   │   ├── llmService.ts     # Gemma 3N integration
+│   │   ├── ttsService.ts     # Kokoro TTS integration
+│   │   ├── searchService.ts  # Whitelisted web search (Wikipedia only)
+│   │   └── sessionService.ts # Simple session management
+│   ├── routes/
+│   │   ├── chat.ts          # Text chat endpoint
+│   │   ├── voice.ts         # Voice processing endpoint
+│   │   ├── tts.ts           # Text-to-speech endpoint
+│   │   └── search.ts        # Whitelisted search endpoint
+│   └── types/
+│       └── index.ts         # Shared type definitions
 ```
 
-## Technical Implementation Plan
+#### Key Changes
+- **Upgrade to Gemma 3N**: Replace current Gemma 3 270M for better performance
+- **Kokoro TTS**: Server-side text-to-speech generation
+- **Whitelisted Search**: Replace Brave Search with Wikipedia-only access
+- **Session Management**: Simple conversation tracking
+- **Enhanced API**: Support for dynamic component rendering
 
-### 1. Server Modifications Required
-- **CORS Configuration**: Allow requests from `http://localhost:5173`
-- **Content Type**: Accept `application/json` instead of `application/octet-stream`
-- **Request Parsing**: Parse JSON body instead of binary audio
-- **Response Format**: Return structured JSON response
+### 2. Separate Frontend Applications
 
-### 2. Frontend Service Layer
-- **LLM Service**: HTTP client for server communication
-- **Error Handling**: Network errors, timeouts, server errors
-- **Loading States**: Show loading indicators during LLM processing
-- **Retry Logic**: Automatic retry for failed requests
+#### Mobile Web App (PWA)
+```
+frontends/
+├── mobile-app/              # PWA for Android/iOS devices
+│   ├── src/
+│   │   ├── components/
+│   │   │   ├── VoiceInterface.tsx
+│   │   │   ├── TextInterface.tsx
+│   │   │   ├── DynamicComponentRenderer.tsx
+│   │   │   ├── TouchControls.tsx
+│   │   │   ├── AudioPlayer.tsx
+│   │   │   ├── ConversationDisplay.tsx
+│   │   │   └── Settings.tsx
+│   │   ├── hooks/
+│   │   │   ├── useVoiceMode.ts
+│   │   │   ├── useConversation.ts
+│   │   │   └── useAudio.ts
+│   │   ├── services/
+│   │   │   ├── api.ts
+│   │   │   ├── audio.ts
+│   │   │   └── pwa.ts
+│   │   └── utils/
+│   │       ├── audioUtils.ts
+│   │       └── deviceUtils.ts
+│   └── package.json
+└── pi-voice-app/            # Headless voice application for Pi4
+    ├── src/
+    │   ├── main.ts          # Main application entry point
+    │   ├── wakeWordDetector.ts
+    │   ├── voiceActivityDetector.ts
+    │   ├── audioProcessor.ts
+    │   ├── apiClient.ts
+    │   └── config.ts
+    ├── package.json
+    └── systemd/
+        └── voice-assistant.service
+```
 
-### 3. UI Components
-- **ConversationDisplay**: Show user transcript and AI response
-- **LoadingIndicator**: Visual feedback during LLM processing
-- **ErrorDisplay**: Show error messages for failed requests
-- **ConversationHistory**: Maintain chat history
+#### Mobile App Features
+- **Touch Interface**: Large buttons, swipe gestures, responsive design
+- **Voice + Text**: Both input methods with full conversation history
+- **Dynamic Components**: Interactive widgets and visual elements
+- **PWA Features**: Installable, offline capability, background sync
+- **Settings**: User preferences, voice settings, app configuration
 
-### 4. State Management
-- **Conversation State**: Track user messages and AI responses
-- **Loading State**: Track when LLM is processing
-- **Error State**: Track and display errors
-- **Session Management**: Optional conversation continuity
+#### Pi4 Voice Application Features
+- **Headless Operation**: No UI, pure audio I/O
+- **Wake Word Detection**: "Hey Assistant" trigger using OSS libraries
+- **Voice Activity Detection**: VAD for speech recording
+- **Audio-Only Focus**: Primary interaction through voice
+- **Research Companion**: Optimized for factual Q&A
+- **Systemd Service**: Auto-start on boot
 
-## Success Criteria
-- [ ] User can speak and see their transcript
-- [ ] Transcript is automatically sent to LLM server
-- [ ] LLM response is displayed in conversation UI
-- [ ] Loading states provide clear feedback
-- [ ] Error handling gracefully manages failures
-- [ ] Conversation flow feels natural and responsive
-- [ ] UI works in both light and dark modes
-- [ ] Mobile experience remains smooth and touch-friendly
+### 3. Voice Recognition OSS Libraries
 
-## Potential Challenges
-- **CORS Issues**: Cross-origin requests between ports
-- **Network Latency**: LLM processing time may be slow
-- **Error Recovery**: Handling server downtime gracefully
-- **State Synchronization**: Keeping conversation state consistent
-- **Performance**: Large LLM responses may impact UI responsiveness
+#### Wake Word Detection Libraries
+1. **openWakeWord** - Open-source framework focused on performance and simplicity
+   - Pre-trained models for common words/phrases
+   - Good real-world performance
+   - GitHub: https://github.com/dscripka/openWakeWord
 
-# Executor's Feedback or Assistance Requests
+2. **Porcupine** - On-device wake word detection engine
+   - Deep learning powered
+   - Standard and tiny model variants
+   - Raspberry Pi support
+   - GitHub: https://github.com/iotlibrary/Porcupine
 
-### Latest Update (Current) - EXECUTOR MODE
-**Issue Fixed**: Transcribed text was being duplicated twice in the conversation.
+3. **Howl** - Open-source wake word detection toolkit
+   - Native support for open speech datasets
+   - Web browser and other platform support
+   - Research paper: https://arxiv.org/abs/2008.09606
 
-**Root Cause Identified**:
-1. In `App.tsx`, the `partialresult` event handler calls both `updateCurrentMessage()` and `sendMessage()`
-2. `updateCurrentMessage()` adds a user message to the conversation display
-3. `sendMessage()` was ALSO adding a NEW user message to the conversation
-4. This resulted in duplicate user messages appearing in the conversation
+#### Voice Activity Detection (VAD) Libraries
+1. **libfvad** - Standalone VAD library based on WebRTC
+   - BSD-3-Clause license
+   - Easy integration
+   - GitHub: https://github.com/dpirch/libfvad
 
-**Solution Implemented**:
-1. **Modified `sendMessage` function** in `useConversation.ts`:
-   - Removed the code that creates and adds a new user message
-   - `sendMessage` now only handles LLM communication and adds AI responses
-   - `updateCurrentMessage` remains responsible for adding/updating user messages
-2. **Maintained the correct flow**:
-   - `partialresult` events call `updateCurrentMessage()` to add/update user message
-   - `partialresult` events also call `sendMessage()` to communicate with LLM
-   - No duplication since only one function adds user messages
+2. **open-voice-activity-detection** - State-of-the-art VAD model
+   - Silero VAD model implementation
+   - Academic and commercial use
+   - GitHub: https://github.com/stefanwebb/open-voice-activity-detection
 
-**Technical Changes**:
-- Removed user message creation from `sendMessage` function
-- `sendMessage` now only sets loading state and handles LLM communication
-- `updateCurrentMessage` remains the sole function responsible for user message management
-- Maintained all existing logging for debugging
+3. **Kaldi** - Speech recognition toolkit with VAD
+   - Widely used in research community
+   - Comprehensive speech processing
 
-**Status**: The duplication issue should now be resolved. Users will see their speech transcribed once in the conversation, and the LLM will receive the transcribed text for processing.
+#### Pi4 Voice Application Implementation
+```typescript
+// Pi4 Voice Application with OSS libraries
+class Pi4VoiceAssistant {
+  private wakeWordDetector: Porcupine; // or openWakeWord
+  private vad: libfvad; // or open-voice-activity-detection
+  private audioProcessor: AudioProcessor;
+  private apiClient: ApiClient;
 
-### Previous Issues Resolved
-- Fixed Chakra UI v3 provider setup errors
-- Resolved Vosk model format issues (kept as tar.gz)
-- Fixed recognizer creation errors (explicit sample rate)
-- Resolved audio format mismatches (16kHz mono PCM conversion)
-- Fixed "Recognition Failed" errors
-- Resolved ChakraProvider "_config" errors
-- Implemented mobile-friendly UI with proper contrast
-- Added dark mode support
-- Integrated LLM server communication
-- Fixed partial results not being sent to LLM
-- Fixed Vosk punctuation issue and partial results handling
+  async initialize() {
+    // Initialize Porcupine wake word detection
+    this.wakeWordDetector = new Porcupine({
+      accessKey: 'your-access-key',
+      keywords: ['hey assistant'],
+      modelPath: './models/porcupine_params.pv'
+    });
 
-# Lessons
-- Vosk Node.js bindings are not browser-compatible; use vosk-browser (WASM) for client-side.
-- Always test model loading and audio capture on real mobile devices.
-- Use 'gap' instead of 'spacing' for Stack in Chakra UI v3+.
-- Chakra UI v3 Alert/AlertIcon are not available; use Text with color for errors.
-- vosk-browser model/recognizer types are not available; use type assertion and linter suppression as needed.
-- Chakra UI v3 requires using the Provider component from snippets instead of ChakraProvider directly.
-- Vosk models can become corrupted during download; always verify archive integrity and re-download from official sources if needed.
-- vosk-browser expects models to remain in tar.gz format; do not extract them to individual files.
-- Vosk recognizer requires explicit sample rate parameter (16000) and expects 16kHz mono PCM audio format.
-- Audio playback debugging is essential for troubleshooting speech recognition issues.
-- **CRITICAL**: vosk-browser's acceptWaveform method expects an AudioBuffer object, not raw PCM data. Always pass the AudioBuffer directly from the Web Audio API.
-- **CRITICAL**: vosk-browser uses event-based recognition results, not synchronous return values. Set up 'result' and 'partialresult' event listeners to receive transcription output.
-- **MOBILE DESIGN**: Use responsive breakpoints (base/md) for different screen sizes, ensure buttons are at least 44px tall for touch accessibility, use proper color contrast (gray.800 for text on light backgrounds), implement proper spacing and typography scaling, and prevent horizontal overflow with maxW="100%" and overflowX="hidden".
-- Include info useful for debugging in the program output.
-- Read the file before you try to edit it.
-- If there are vulnerabilities that appear in the terminal, run npm audit before proceeding.
-- Always ask before using the -force git command.
+    // Initialize libfvad for voice activity detection
+    this.vad = new libfvad({
+      sampleRate: 16000,
+      frameDuration: 30 // ms
+    });
 
----
+    // Set up audio processing
+    this.audioProcessor = new AudioProcessor({
+      inputDevice: 'default',
+      outputDevice: 'default',
+      sampleRate: 16000
+    });
+  }
 
-# Planner's Review & Recommendations
+  async startListening() {
+    // Start continuous wake word detection
+    this.wakeWordDetector.start();
+    
+    this.wakeWordDetector.onWakeWord(() => {
+      this.handleWakeWord();
+    });
+  }
 
-## Summary of Progress
-- The app is scaffolded with Vite, React, TypeScript, and Chakra UI v3.
-- Chakra UI is fully integrated and up to date, using the latest API (e.g., 'gap' prop).
-- vosk-browser is installed, and a small English model is available in the public directory.
-- ModelLoader loads the WASM model and signals readiness.
-- MicRecorder handles mic permissions, recording, and passes audio to the recognizer.
-- Audio is transcribed in-browser using vosk-browser, and the transcript is displayed inline.
-- Linter/type issues are handled with explicit comments and best practices for dynamic WASM libraries.
-- The project status board and lessons are kept up to date after each step.
+  private async handleWakeWord() {
+    // Play wake sound
+    await this.audioProcessor.playWakeSound();
+    
+    // Record speech using VAD
+    const audioData = await this.recordWithVAD();
+    
+    // Send to backend for processing
+    const response = await this.apiClient.processVoice(audioData);
+    
+    // Play TTS response
+    await this.audioProcessor.playAudio(response.audioUrl);
+  }
 
-## Assessment
-- The MVP (record, transcribe, display) is functionally complete and follows the plan.
-- Code is modular, readable, and follows React/Chakra UI conventions.
-- All major technical risks (WASM, model loading, mic, recognizer) are addressed.
-- Project management and documentation are clear and up to date.
+  private async recordWithVAD(): Promise<Buffer> {
+    const audioChunks: Buffer[] = [];
+    let isSpeaking = false;
+    
+    return new Promise((resolve) => {
+      this.audioProcessor.startRecording((chunk: Buffer) => {
+        const vadResult = this.vad.process(chunk);
+        
+        if (vadResult === 1) { // Voice detected
+          isSpeaking = true;
+          audioChunks.push(chunk);
+        } else if (vadResult === 0 && isSpeaking) { // Silence after speech
+          // Wait for 1 second of silence to end recording
+          setTimeout(() => {
+            this.audioProcessor.stopRecording();
+            resolve(Buffer.concat(audioChunks));
+          }, 1000);
+        }
+      });
+    });
+  }
+}
+```
 
-## Recommendations / Next Steps
-1. **UI/UX Improvements**
-   - Add a dedicated TranscriptDisplay component for better separation of concerns and future extensibility.
-   - Improve mobile responsiveness: ensure all controls are touch-friendly, use Chakra's responsive props, and test on real devices.
-   - Add visual feedback for model loading, recording, and errors (e.g., progress bars, toasts).
-   - Consider adding a clear/reset button for the transcript.
-2. **Accessibility**
-   - Ensure all interactive elements are accessible (ARIA labels, keyboard navigation, color contrast).
-   - Add focus management for modal/dialogs if used in the future.
-3. **Performance & Robustness**
-   - Handle edge cases: long recordings, multiple recordings in a row, mic permission changes.
-   - Add error boundaries or fallback UI for WASM/model load failures.
-4. **Testing**
-   - Add unit and integration tests for components (ModelLoader, MicRecorder, TranscriptDisplay).
-   - Test on a variety of browsers and mobile devices.
-5. **PWA & Offline Support**
-   - Implement Vite PWA plugin configuration for installability and offline use.
-   - Test model caching and offline transcription.
-6. **Documentation**
-   - Update README with usage instructions, browser support, and troubleshooting tips.
-   - Add in-app help or tooltips for first-time users.
+### 4. Dynamic Component Rendering
 
-## Optional Enhancements
-- Support for multiple languages (allow user to select/download different models).
-- Streaming/partial transcription (show partial results as user speaks).
-- Export transcript (copy, download as .txt, share).
-- Voice activity detection (auto start/stop recording).
+#### Component Registry System
+```typescript
+interface DynamicComponent {
+  type: string;
+  props: Record<string, any>;
+  children?: React.ReactNode;
+}
 
----
+const componentRegistry: ComponentRegistry = {
+  'weather-card': WeatherCard,
+  'timer-display': TimerDisplay,
+  'calculator': Calculator,
+  'image-gallery': ImageGallery,
+  'chart': Chart,
+  'button-group': ButtonGroup,
+  'status-indicator': StatusIndicator,
+  'form': DynamicForm,
+  'list': DynamicList,
+  'modal': Modal,
+};
+```
 
-**Conclusion:**
-The project is on track, the MVP is robust, and the codebase is well-structured. The next phase should focus on polish, accessibility, and user experience improvements, as well as adding PWA/offline support and tests. No major architectural changes are needed at this time.
+#### LLM Response Format
+```typescript
+interface LLMResponse {
+  text: string;
+  components?: DynamicComponent[];
+  audioUrl?: string;
+  timestamp: string;
+}
+```
 
----
+#### Example Components
+- **Weather Card**: Display weather information
+- **Timer Display**: Interactive countdown timers
+- **Calculator**: Functional calculator
+- **Image Gallery**: Display images
+- **Charts**: Data visualization
+- **Button Groups**: Interactive controls
 
-# End of Scratchpad 
+### 5. Whitelisted Web Search (Wikipedia Only)
 
-## Current Status / Progress Tracking
+#### Wikipedia API Integration
+Wikipedia provides two main APIs for accessing content:
 
-### ✅ Completed Tasks
-- [x] Project scaffolding with Vite, React, TypeScript, and Chakra UI
-- [x] Upgraded Chakra UI to v3 and fixed provider setup
-- [x] Integrated vosk-browser WASM library
-- [x] Downloaded and configured small English Vosk model
-- [x] Implemented core components: ModelLoader, MicRecorder, ConversationDisplay
-- [x] Fixed audio format issues (converting to 16kHz mono PCM)
-- [x] Added mobile-friendly UI with responsive design
-- [x] Implemented dark mode with custom theme
-- [x] Integrated with LLM server running in `src/vosk.ts`
-- [x] Added real-time partial transcript display
-- [x] Fixed transcribed text appearing separately instead of in conversation
-- [x] Implemented automatic sending of complete sentences to LLM
+**MediaWiki Action API** (`https://en.wikipedia.org/w/api.php`):
+- Used for searching articles and retrieving page metadata
+- Example: Search for "Earth" articles
+- Returns JSON with search results including titles, snippets, and page IDs
 
-### 🔄 Current Task
-- [ ] Testing and validation of voice-to-LLM pipeline
+**Wikimedia REST API** (`https://en.wikipedia.org/api/rest_v1/`):
+- Optimized for high-volume use cases
+- Provides page summaries and content in machine-readable format
+- Example: Get summary of "Earth" article
+- Returns concise summaries in JSON format
 
-### 📋 Next Steps
-- [ ] User testing and feedback collection
-- [ ] Performance optimization if needed
-- [ ] Additional features (conversation history, export, etc.)
+**Usage Guidelines**:
+- Set unique `User-Agent` header to identify your application
+- Limit to 200 requests per second to avoid impacting other users
+- Both APIs are free and open to use
 
-## Executor's Feedback or Assistance Requests
+#### Implementation Details
+```typescript
+class WikipediaSearchService {
+  private baseUrl = 'https://en.wikipedia.org/api/rest_v1';
+  private actionApiUrl = 'https://en.wikipedia.org/w/api.php';
+  private userAgent = 'Dallama-AI-Assistant/1.0';
+  
+  async search(query: string): Promise<SearchResult[]> {
+    const response = await fetch(
+      `${this.actionApiUrl}?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json`,
+      {
+        headers: { 'User-Agent': this.userAgent }
+      }
+    );
+    const data = await response.json();
+    return data.query.search.map((item: any) => ({
+      title: item.title,
+      snippet: item.snippet,
+      pageId: item.pageid
+    }));
+  }
+  
+  async getPageSummary(pageTitle: string): Promise<string> {
+    const response = await fetch(
+      `${this.baseUrl}/page/summary/${encodeURIComponent(pageTitle)}`,
+      {
+        headers: { 'User-Agent': this.userAgent }
+      }
+    );
+    const data = await response.json();
+    return data.extract;
+  }
+  
+  async getPageContent(pageId: string): Promise<string> {
+    // Extract relevant content from Wikipedia pages
+    // Filter for factual information only
+  }
+}
+```
 
-### Latest Update (Current) - EXECUTOR MODE
-**Issue Fixed**: Transcribed text was being duplicated twice in the conversation.
+#### Use Cases for Voice-Only Interface
+- "What is the biggest cat in the world?"
+- "How many kinds of quartz are there?"
+- "What is the capital of France?"
+- "How does photosynthesis work?"
+- "What are the main types of renewable energy?"
 
-**Root Cause Identified**:
-1. In `App.tsx`, the `partialresult` event handler calls both `updateCurrentMessage()` and `sendMessage()`
-2. `updateCurrentMessage()` adds a user message to the conversation display
-3. `sendMessage()` was ALSO adding a NEW user message to the conversation
-4. This resulted in duplicate user messages appearing in the conversation
+### 6. Hardware Setup
 
-**Solution Implemented**:
-1. **Modified `sendMessage` function** in `useConversation.ts`:
-   - Removed the code that creates and adds a new user message
-   - `sendMessage` now only handles LLM communication and adds AI responses
-   - `updateCurrentMessage` remains responsible for adding/updating user messages
-2. **Maintained the correct flow**:
-   - `partialresult` events call `updateCurrentMessage()` to add/update user message
-   - `partialresult` events also call `sendMessage()` to communicate with LLM
-   - No duplication since only one function adds user messages
+#### Local Network Configuration
+```
+Your Local Network:
+├── Main Server (Your current machine)
+│   ├── Backend API (Fastify + Gemma 3N)
+│   └── Mobile Web App (PWA)
+├── Raspberry Pi 4 (Headless voice device)
+│   ├── Node.js voice application
+│   ├── Microphone input
+│   ├── Speaker output
+│   └── LED status indicator (optional)
+└── Mobile Devices (Android/iOS)
+    └── Mobile web app (PWA)
+```
 
-**Technical Changes**:
-- Removed user message creation from `sendMessage` function
-- `sendMessage` now only sets loading state and handles LLM communication
-- `updateCurrentMessage` remains the sole function responsible for user message management
-- Maintained all existing logging for debugging
+#### Network Access
+- **Backend**: `http://192.168.1.100:3000`
+- **Mobile App**: `http://192.168.1.100:5173`
+- **CORS**: Configured for local network IPs
 
-**Status**: The duplication issue should now be resolved. Users will see their speech transcribed once in the conversation, and the LLM will receive the transcribed text for processing.
+### 7. Implementation Phases
 
-### Previous Issues Resolved
-- Fixed Chakra UI v3 provider setup errors
-- Resolved Vosk model format issues (kept as tar.gz)
-- Fixed recognizer creation errors (explicit sample rate)
-- Resolved audio format mismatches (16kHz mono PCM conversion)
-- Fixed "Recognition Failed" errors
-- Resolved ChakraProvider "_config" errors
-- Implemented mobile-friendly UI with proper contrast
-- Added dark mode support
-- Integrated LLM server communication
-- Fixed partial results not being sent to LLM
-- Fixed Vosk punctuation issue and partial results handling
+#### Phase 1: Enhanced Backend (Week 1-2)
+1. **Upgrade to Gemma 3N**
+   - Download and configure Gemma 3N model
+   - Update model loading in backend
+   - Test performance and quality
 
-## Lessons
+2. **Implement Kokoro TTS**
+   - Integrate Kokoro TTS service
+   - Add TTS endpoint to API
+   - Test audio generation and quality
 
-- Include info useful for debugging in the program output.
-- Read the file before you try to edit it.
-- If there are vulnerabilities that appear in the terminal, run npm audit before proceeding
-- Always ask before using the -force git command
-- Vosk speech recognition models don't add punctuation by default
-- Manual recording control means we only get partial results, not final results with punctuation
-- Send partial results immediately to LLM for real-time conversation flow 
+3. **Whitelisted Wikipedia Search**
+   - Replace Brave Search with Wikipedia API integration
+   - Implement MediaWiki Action API for search
+   - Implement Wikimedia REST API for page summaries
+   - Add proper User-Agent headers and rate limiting
+   - Test factual accuracy and response quality
 
-# Planner: Web Search Integration Feature
+4. **Enhanced API Structure**
+   - Refactor existing `vosk.ts` into modular services
+   - Add session management
+   - Implement dynamic component support
 
-## Background and Motivation
-Users sometimes ask questions that require up-to-date or external information not present in the local LLM model. To improve the model's usefulness, we want to add a feature that allows the backend to perform a web search (e.g., using Brave Search API) and summarize the results. This should only be triggered when the user explicitly requests a web search (e.g., "search the web for..." or "web search:").
+#### Phase 2: Mobile Web App (Week 3-4)
+1. **Enhanced Mobile Interface**
+   - Create mobile-optimized PWA
+   - Implement dynamic component system
+   - Add touch controls and responsive design
+   - Test on mobile devices
 
-## Key Challenges and Analysis
-- **API Access**: Need to use a reliable web search API (e.g., Brave Search, Bing, Google Custom Search). Requires API key and handling rate limits.
-- **Prompt Detection**: The backend must accurately detect when a user is explicitly requesting a web search, to avoid unnecessary API calls.
-- **Result Summarization**: The model should summarize search results in a concise, helpful way, not just return raw links.
-- **Latency**: Web search and summarization should be fast enough for a conversational experience.
-- **Error Handling**: Handle API failures, empty results, or blocked requests gracefully.
-- **Security**: Avoid leaking sensitive data in search queries; sanitize user input.
+2. **Dynamic Component System**
+   - Create component registry
+   - Implement component renderer
+   - Build example components (calculator, timer, etc.)
 
-## High-level Task Breakdown
-1. **Research and Select Web Search API**
-   - Evaluate Brave Search, Bing, or Google Custom Search APIs
-   - Obtain API key and test basic queries
-   - Success: Able to fetch search results programmatically
+3. **PWA Features**
+   - Installable on mobile devices
+   - Offline capability
+   - Background sync
 
-2. **Implement Web Search Utility in Backend**
-   - Create a function to query the chosen search API
-   - Parse and format results (title, snippet, URL)
-   - Success: Backend can fetch and parse search results
+#### Phase 3: Pi4 Voice Application (Week 5)
+1. **Pi4 Hardware Setup**
+   - Install Raspberry Pi OS
+   - Configure audio I/O (microphone and speakers)
+   - Set up Node.js environment
 
-3. **User Prompt Detection Logic**
-   - Implement logic to detect explicit web search requests (e.g., regex for "search the web for ...")
-   - Add tests for prompt detection
-   - Success: Only explicit requests trigger web search
+2. **Voice Application Development**
+   - Implement headless voice application
+   - Integrate Porcupine wake word detection
+   - Integrate libfvad voice activity detection
+   - Configure audio processing pipeline
 
-4. **Summarization Pipeline**
-   - Pass search results to the LLM for summarization
-   - Design prompt to instruct the model to summarize and cite sources
-   - Success: Model returns a concise summary with references
+3. **Systemd Service Setup**
+   - Create systemd service for auto-start
+   - Configure logging and error handling
+   - Test boot-time startup
 
-5. **Integrate with Conversation Flow**
-   - Update backend to intercept and handle web search requests
-   - Return summarized results to the user in the conversation
-   - Success: User receives summarized web search results in chat
+#### Phase 4: Testing & Optimization (Week 6)
+1. **Cross-Device Testing**
+   - Test mobile app on Android/iOS
+   - Test voice application on Pi4
+   - Verify conversation sync across devices
 
-6. **Error and Rate Limit Handling**
-   - Handle API errors, empty results, and rate limits gracefully
-   - Inform user if search fails or is unavailable
-   - Success: Robust error handling and user feedback
+2. **Performance Optimization**
+   - Optimize LLM response times
+   - Improve TTS audio quality
+   - Reduce network latency
 
-7. **Testing and Validation**
-   - Unit and integration tests for all new logic
-   - Manual testing with various search prompts
-   - Success: Feature works reliably and only triggers on explicit requests
+3. **User Experience Refinement**
+   - Polish mobile UI/UX
+   - Optimize voice application reliability
+   - Add error handling and recovery
 
-## Success Criteria
-- [ ] Web search is only triggered by explicit user requests
-- [ ] Search results are fetched, parsed, and summarized accurately
-- [ ] Summaries are concise, relevant, and cite sources
-- [ ] Errors are handled gracefully
-- [ ] No impact on normal conversation flow when not searching
-- [ ] Feature passes all tests and manual review 
+### 8. Technical Specifications
 
-## Project Status Board (Web Search Integration)
-- [x] Research and Select Web Search API
-- [x] Implement Web Search Utility in Backend
-- [x] User Prompt Detection Logic
-- [ ] Summarization Pipeline
-- [ ] Integrate with Conversation Flow
-- [ ] Error and Rate Limit Handling
-- [ ] Testing and Validation
+#### Backend Requirements
+- **LLM**: Gemma 3N (local inference)
+- **TTS**: Kokoro (server-side generation)
+- **STT**: Vosk (client-side) + Whisper (server-side fallback)
+- **Search**: Wikipedia API only
+- **Storage**: SQLite for sessions, local file system for audio cache
 
-### Executor's Feedback or Assistance Requests (Web Search Integration)
+#### Mobile App Requirements
+- **Framework**: React + TypeScript
+- **Build Tool**: Vite
+- **UI Library**: Chakra UI
+- **PWA**: Service workers, manifest
+- **Audio**: Web Audio API
 
-**Step 1 Complete: Research and Select Web Search API**
-- Chosen API: **Brave Search API** ([official docs](https://brave.com/search/api/))
-- Free tier: 2,000 queries/month, 1 query/sec
-- API endpoint: https://api.search.brave.com/
-- To get started:
-  1. Sign up for a Brave Search API account at [Brave Search API](https://brave.com/search/api/)
-  2. Obtain your API key from the dashboard
-  3. Review the [API documentation](https://brave.com/search/api/) for request/response formats
-- Next step: Implement a backend utility to query the Brave Search API using the API key 
+#### Pi4 Voice Application Requirements
+- **Wake Word**: Porcupine or openWakeWord
+- **VAD**: libfvad or open-voice-activity-detection
+- **Audio**: ALSA for Pi4 audio I/O
+- **Runtime**: Node.js with native bindings
+- **Service**: Systemd for auto-start
 
-**Step 2 Complete: Implement Web Search Utility in Backend**
-- `braveWebSearch(query, options)` utility is implemented in `src/braveSearch.ts`
-- Reads API key from `BRAVE_SEARCH_API_KEY` environment variable
-- Enforces 1 query/sec rate limit using sleep-based throttling
-- Returns parsed search results (title, url, description)
-- Handles API errors and unexpected response formats
+#### Network Requirements
+- **Local Network**: Static IPs for main machine and Pi4
+- **Ports**: 3000 (backend), 5173 (mobile app)
+- **CORS**: Configured for local network access
 
-**Step 3 Complete: User Prompt Detection Logic**
-- `isWebSearchPrompt(text)` utility is implemented in `src/braveSearch.ts`
-- Returns true only if the prompt starts with 'search for' (case-insensitive, allows leading whitespace)
-- Ensures web search is only triggered by explicit user requests at the start of the prompt
+### 9. Security & Limitations
 
-**Next step:** Implement the summarization pipeline to pass search results to the LLM and return a concise, referenced summary. 
+#### Web Access Restrictions
+- **Wikipedia Only**: No general web search
+- **Factual Content**: Focus on educational/research queries
+- **No Social Media**: No access to social platforms
+- **No Shopping**: No e-commerce or product recommendations
+
+#### Voice-Only Interface Limitations
+- **Research Companion**: Primary use case for factual questions
+
+
+- **No Complex Tasks**: No web browsing, email, or complex operations
+- **Educational Focus**: Optimized for learning and information retrieval
+
+### 10. Success Metrics
+
+#### Performance Goals
+- **Response Time**: < 2 seconds for text, < 3 seconds for voice
+- **Audio Quality**: Clear, natural-sounding TTS
+- **Accuracy**: Factual responses with Wikipedia citations
+- **Reliability**: 99% uptime on local network
+
+#### User Experience Goals
+- **Mobile**: Smooth touch interactions, responsive design
+- **Voice**: Natural conversation flow, clear audio output
+- **Cross-Device**: Seamless conversation sync
+- **Offline**: Basic functionality without internet
+
+### 11. Future Enhancements
+
+#### Potential Additions
+- **Local Knowledge Base**: Add custom documents/databases
+- **Voice Commands**: "Set timer", "Play music", etc.
+- **Home Automation**: Integrate with smart home devices
+- **Multi-language**: Support for additional languages
+- **Advanced Components**: More interactive widgets
+
+#### Scalability Considerations
+- **Multiple Pi4s**: Support for multiple voice devices
+- **Family Accounts**: User-specific preferences and history
+- **Content Filtering**: Age-appropriate content for children
+- **Backup System**: Conversation and settings backup
+
+## Next Steps
+
+1. **Start with Phase 1**: Upgrade backend to Gemma 3N and implement Kokoro TTS
+2. **Test Wikipedia Search**: Verify factual accuracy and response quality
+3. **Build Mobile App**: Create PWA with dynamic components
+4. **Develop Pi4 Voice App**: Implement headless voice application with OSS libraries
+5. **Iterate and Improve**: Based on testing and user feedback
+
+This plan provides a clear roadmap for building a powerful, yet controlled AI assistant that serves as a research companion while maintaining security and focusing on factual, educational content. 
