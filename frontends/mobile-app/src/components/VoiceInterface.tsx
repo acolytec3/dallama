@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Box, Button, Text, VStack, HStack, IconButton, useToast } from '@chakra-ui/react';
+import { Box, Button, Text, VStack, HStack, IconButton, Alert } from '@chakra-ui/react';
 import { FaMicrophone, FaMicrophoneSlash, FaStop } from 'react-icons/fa';
 
 interface VoiceInterfaceProps {
@@ -11,9 +11,9 @@ export function VoiceInterface({ onTranscription, isConnected }: VoiceInterfaceP
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState('');
+  const [notification, setNotification] = useState<{message: string, type: 'info' | 'error' | 'success' | 'warning'} | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
-  const toast = useToast();
 
   useEffect(() => {
     // Request microphone permission on component mount
@@ -23,15 +23,13 @@ export function VoiceInterface({ onTranscription, isConnected }: VoiceInterfaceP
       })
       .catch((error) => {
         console.error('Microphone permission denied:', error);
-        toast({
-          title: 'Microphone Access Required',
-          description: 'Please allow microphone access to use voice input.',
-          status: 'warning',
-          duration: 5000,
-          isClosable: true,
+        setNotification({
+          message: 'Please allow microphone access to use voice input.',
+          type: 'warning'
         });
+        setTimeout(() => setNotification(null), 5000);
       });
-  }, [toast]);
+  }, []);
 
   const startRecording = async () => {
     try {
@@ -55,20 +53,18 @@ export function VoiceInterface({ onTranscription, isConnected }: VoiceInterfaceP
       setIsRecording(true);
       setTranscript('');
       
-      toast({
-        title: 'Recording Started',
-        description: 'Speak now...',
-        status: 'info',
-        duration: 2000,
+      setNotification({
+        message: 'Recording started. Speak now...',
+        type: 'info'
       });
+      setTimeout(() => setNotification(null), 2000);
     } catch (error) {
       console.error('Error starting recording:', error);
-      toast({
-        title: 'Recording Failed',
-        description: 'Could not start recording. Please check microphone permissions.',
-        status: 'error',
-        duration: 5000,
+      setNotification({
+        message: 'Could not start recording. Please check microphone permissions.',
+        type: 'error'
       });
+      setTimeout(() => setNotification(null), 5000);
     }
   };
 
@@ -96,22 +92,20 @@ export function VoiceInterface({ onTranscription, isConnected }: VoiceInterfaceP
         onTranscription(mockTranscript);
         setIsProcessing(false);
         
-        toast({
-          title: 'Transcription Complete',
-          description: 'Voice input processed successfully.',
-          status: 'success',
-          duration: 3000,
+        setNotification({
+          message: 'Voice input processed successfully.',
+          type: 'success'
         });
+        setTimeout(() => setNotification(null), 3000);
       }, 2000);
     } catch (error) {
       console.error('Error processing audio:', error);
       setIsProcessing(false);
-      toast({
-        title: 'Transcription Failed',
-        description: 'Could not process voice input. Please try again.',
-        status: 'error',
-        duration: 5000,
+      setNotification({
+        message: 'Could not process voice input. Please try again.',
+        type: 'error'
       });
+      setTimeout(() => setNotification(null), 5000);
     }
   };
 
@@ -125,6 +119,12 @@ export function VoiceInterface({ onTranscription, isConnected }: VoiceInterfaceP
 
   return (
     <VStack spacing={4} align="stretch">
+      {notification && (
+        <Alert status={notification.type} borderRadius="md">
+          <Text fontSize="sm">{notification.message}</Text>
+        </Alert>
+      )}
+      
       <Box textAlign="center">
         <Text fontSize="lg" fontWeight="medium" mb={4}>
           Voice Input

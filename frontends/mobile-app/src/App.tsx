@@ -8,19 +8,18 @@ import {
   Container, 
   Heading, 
   Divider,
-  useColorMode,
   IconButton,
   Badge,
   Spinner
 } from '@chakra-ui/react';
-import { FaSun, FaMoon, FaTrash, FaWifi, FaWifiSlash } from 'react-icons/fa';
+import { FaSun, FaMoon, FaTrash, FaWifi } from 'react-icons/fa';
 import { useConversation } from './hooks/useConversation';
 import { ConversationDisplay } from './components/ConversationDisplay';
 import { VoiceInterface } from './components/VoiceInterface';
 import { TextInterface } from './components/TextInterface';
 
 export function App() {
-  const { colorMode, toggleColorMode } = useColorMode();
+  const [colorMode, setColorMode] = useState<'light' | 'dark'>('light');
   const [activeTab, setActiveTab] = useState<'voice' | 'text'>('text');
   
   const {
@@ -50,8 +49,12 @@ export function App() {
     sendMessage(text);
   };
 
+  const toggleColorMode = () => {
+    setColorMode(prev => prev === 'light' ? 'dark' : 'light');
+  };
+
   return (
-    <Box minH="100vh" bg="gray.50" _dark={{ bg: 'gray.900' }}>
+    <Box minH="100vh" bg={colorMode === 'dark' ? 'gray.900' : 'gray.50'}>
       <Container maxW="container.md" py={4}>
         <VStack spacing={6} align="stretch">
           {/* Header */}
@@ -73,7 +76,7 @@ export function App() {
                     </>
                   ) : (
                     <>
-                      <FaWifiSlash style={{ marginRight: '4px' }} />
+                      <Text style={{ marginRight: '4px' }}>📶</Text>
                       Disconnected
                     </>
                   )}
@@ -131,14 +134,12 @@ export function App() {
           <VStack spacing={6} align="stretch">
             {/* Conversation Display */}
             <Box
-              bg="white"
-              _dark={{ bg: 'gray.800' }}
+              bg={colorMode === 'dark' ? 'gray.800' : 'white'}
               p={6}
               borderRadius="lg"
               shadow="sm"
               border="1px solid"
-              borderColor="gray.200"
-              _dark={{ borderColor: 'gray.700' }}
+              borderColor={colorMode === 'dark' ? 'gray.700' : 'gray.200'}
               minH="400px"
             >
               <ConversationDisplay
@@ -151,14 +152,12 @@ export function App() {
 
             {/* Input Interface */}
             <Box
-              bg="white"
-              _dark={{ bg: 'gray.800' }}
+              bg={colorMode === 'dark' ? 'gray.800' : 'white'}
               p={6}
               borderRadius="lg"
               shadow="sm"
               border="1px solid"
-              borderColor="gray.200"
-              _dark={{ borderColor: 'gray.700' }}
+              borderColor={colorMode === 'dark' ? 'gray.700' : 'gray.200'}
             >
               {activeTab === 'text' ? (
                 <TextInterface

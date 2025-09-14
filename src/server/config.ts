@@ -45,11 +45,11 @@ export const config: ServerConfig = {
         credentials: true
     },
     llm: {
-        modelPath: process.env.LLM_MODEL_PATH || 'gemma-3-270m-it-Q8_0.gguf',
-        maxTokens: parseInt(process.env.LLM_MAX_TOKENS || '150'),
-        temperature: parseFloat(process.env.LLM_TEMPERATURE || '0.3'),
+        modelPath: process.env.LLM_MODEL_PATH || 'gemma-3n-E4B-it-Q3_K_M.gguf',
+        maxTokens: parseInt(process.env.LLM_MAX_TOKENS || '300'),
+        temperature: parseFloat(process.env.LLM_TEMPERATURE || '0.7'),
         topP: parseFloat(process.env.LLM_TOP_P || '0.8'),
-        topK: parseInt(process.env.LLM_TOP_K || '40')
+        topK: parseInt(process.env.LLM_TOP_K || '50')
     },
     tts: {
         provider: (process.env.TTS_PROVIDER as 'kokoro' | 'local') || 'kokoro',

@@ -88,21 +88,6 @@ async function startServer() {
             };
         });
 
-        // Audio file serving endpoint
-        fastify.get('/api/audio/:filename', async (request, reply) => {
-            try {
-                const { filename } = request.params as { filename: string };
-                const audioBuffer = await ttsService.getAudioFile(filename);
-
-                reply.type('audio/wav');
-                reply.send(audioBuffer);
-            } catch (error) {
-                reply.status(404).send({
-                    error: 'Audio file not found',
-                    message: 'The requested audio file does not exist'
-                });
-            }
-        });
 
         // Error handling
         fastify.setErrorHandler((error, request, reply) => {

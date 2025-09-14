@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Text, VStack, HStack, Spinner, Alert, AlertIcon, Button, IconButton } from '@chakra-ui/react';
+import { Box, Text, VStack, HStack, Spinner, Alert, Button, IconButton } from '@chakra-ui/react';
 import { Message } from '../hooks/useConversation';
 import { DynamicComponentRenderer } from './DynamicComponentRenderer';
 

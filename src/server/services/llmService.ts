@@ -41,7 +41,7 @@ export class LLMService {
             });
 
             // Add system prompt for concise, helpful responses
-            const systemPrompt = `You are a helpful AI assistant optimized for voice conversations. Keep your responses brief, clear, and under 100 words. Focus on being helpful and direct. Avoid unnecessary explanations or verbose language.
+            const systemPrompt = `You are a helpful AI assistant optimized for voice conversations. Keep your responses brief and clear without being verbose. Focus on being helpful and direct. Avoid unnecessary explanations or expansive language.
 
 When appropriate, you can include dynamic components in your responses using this format:
 {
