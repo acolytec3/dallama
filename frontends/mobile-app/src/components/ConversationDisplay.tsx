@@ -73,7 +73,7 @@ export function ConversationDisplay({ messages, isLoading, error, onClearError }
 
       {error && (
         <Alert status="error" borderRadius="md">
-          <AlertIcon />
+          <Text fontSize="sm">⚠</Text>
           <Box flex="1">
             <Text fontSize="sm">{error}</Text>
           </Box>

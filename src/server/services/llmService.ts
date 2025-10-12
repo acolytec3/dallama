@@ -41,37 +41,58 @@ export class LLMService {
             });
 
             // Add system prompt for concise, helpful responses
-            const systemPrompt = `You are a helpful AI assistant optimized for voice conversations. Keep your responses brief and clear without being verbose. Focus on being helpful and direct. Avoid unnecessary explanations or expansive language.
+            const systemPrompt = `You are a helpful AI assistant. You MUST respond in JSON format for mobile and web frontends.
 
-IMPORTANT: Always be honest about data limitations. If you don't have access to real-time data (like weather), explain this clearly. However, you can still demonstrate components with placeholder examples when users specifically ask for them.
-
-When appropriate, you can include dynamic components in your responses using this format:
+RESPONSE FORMAT - Use this EXACT structure:
 {
   "text": "Your response text here",
   "components": [
     {
-      "type": "component-name",
+      "type": "custom-html",
       "props": {
-        "prop1": "value1",
-        "prop2": "value2"
+        "html": "Your HTML here",
+        "css": "Your CSS here"
       }
     }
   ]
 }
 
-Available components:
-- weather-card: Display weather information (use only when user specifically requests a weather card component)
-- timer-display: Show countdown timers
-- calculator: Interactive calculator
-- image-gallery: Display images
-- chart: Show data charts
-- button-group: Interactive buttons
-- status-indicator: Show status
-- form: Dynamic forms
-- list: Interactive lists
-- modal: Popup dialogs
+EXAMPLES:
 
-Keep responses concise and use components when they enhance the user experience. Be honest about data limitations.`;
+For weather requests:
+{
+  "text": "Here's the weather for NYC:",
+  "components": [
+    {
+      "type": "custom-html",
+      "props": {
+        "html": "<div class='weather'><h3>New York City</h3><div class='temp'>75°F</div><p>Sunny</p></div>",
+        "css": ".weather { background: linear-gradient(135deg, #667eea, #764ba2); padding: 20px; border-radius: 10px; color: white; text-align: center; }"
+      }
+    }
+  ]
+}
+
+For animal information:
+{
+  "text": "Here's what I found about red pandas:",
+  "components": [
+    {
+      "type": "custom-html",
+      "props": {
+        "html": "<div class='animal-card'><h2>Red Panda</h2><p>Small mammal native to the eastern Himalayas...</p></div>",
+        "css": ".animal-card { background: linear-gradient(135deg, #ff6b6b, #ffa500); padding: 20px; border-radius: 10px; color: white; }"
+      }
+    }
+  ]
+}
+
+CRITICAL RULES:
+1. ALWAYS respond in JSON format for mobile/web frontends
+2. NEVER use markdown code blocks (```)
+            3. ALWAYS include both "text" and "components" fields
+            4. Use "custom-html" type for visual components
+5. Keep responses concise and helpful`;
 
             // Initialize the session with the system prompt
             await this.session.prompt(systemPrompt);
@@ -113,10 +134,10 @@ Keep responses concise and use components when they enhance the user experience.
 
                     // Format results for LLM summarization
                     const formattedResults = searchResults.results.map((r, i) =>
-                        `${i + 1}. ${r.title}\n${r.snippet}\n${r.url}`
+                        `${ i + 1 }. ${ r.title } \n${ r.snippet } \n${ r.url } `
                     ).join("\n\n");
 
-                    const summaryPrompt = `Summarize the following Wikipedia search results for the query: "${searchQuery}". Be helpful in tone and provide a concise answer.\n\nResults:\n${formattedResults}`;
+                    const summaryPrompt = `Summarize the following Wikipedia search results for the query: "${searchQuery}".Be helpful in tone and provide a concise answer.\n\nResults: \n${ formattedResults } `;
 
                     const summaryStart = Date.now();
                     response = await this.session!.prompt(summaryPrompt, {
@@ -127,7 +148,7 @@ Keep responses concise and use components when they enhance the user experience.
                         repeatPenalty: { penalty: 1.1 },
                     });
                     const summaryTime = Date.now() - summaryStart;
-                    console.log(chalk.yellow(`[LLM] Summary generation took ${summaryTime}ms`));
+                    console.log(chalk.yellow(`[LLM] Summary generation took ${ summaryTime } ms`));
                 } catch (err) {
                     console.error(chalk.red("Wikipedia Search API error:"), err);
                     response = "I'm sorry, I couldn't search Wikipedia at the moment. Please try again later.";
@@ -145,7 +166,7 @@ Keep responses concise and use components when they enhance the user experience.
 
             const responseTime = Date.now() - startTime;
             console.log(chalk.green(`LLM Response: "${response}"`));
-            console.log(chalk.cyan(`Response time: ${responseTime}ms, Length: ${response.length} chars`));
+            console.log(chalk.cyan(`Response time: ${ responseTime } ms, Length: ${ response.length } chars`));
 
             // Try to parse response for dynamic components
             try {
@@ -167,7 +188,7 @@ Keep responses concise and use components when they enhance the user experience.
 
         } catch (error) {
             console.error(chalk.red("Error processing chat request:"), error);
-            throw new Error(`Failed to process chat: ${error instanceof Error ? error.message : 'Unknown error'}`);
+            throw new Error(`Failed to process chat: ${ error instanceof Error ? error.message : 'Unknown error' } `);
         }
     }
 

@@ -100,13 +100,58 @@ export class WikipediaSearchService {
 
     isSearchPrompt(text: string): boolean {
         // Check if the prompt starts with 'search for' (case-insensitive, allows leading whitespace)
-        return /^\s*search for\s/i.test(text);
+        if (/^\s*search for\s/i.test(text)) {
+            return true;
+        }
+
+        // Check for factual questions that would benefit from Wikipedia search
+        const factualPatterns = [
+            /what is (?:a |an |the )?([^?]+)\?/i,
+            /tell me about ([^?]+)/i,
+            /who is ([^?]+)/i,
+            /where is ([^?]+)/i,
+            /when did ([^?]+)/i,
+            /how does ([^?]+)/i,
+            /explain ([^?]+)/i,
+            /describe ([^?]+)/i,
+            /^([^?]+) facts?/i,
+            /^([^?]+) information/i,
+            /^([^?]+) details/i
+        ];
+
+        return factualPatterns.some(pattern => pattern.test(text));
     }
 
     extractSearchQuery(text: string): string {
         // Extract the query after 'search for'
-        const match = text.match(/^\s*search for\s+(.*)$/i);
-        return match && match[1] ? match[1].trim() : '';
+        const searchForMatch = text.match(/^\s*search for\s+(.*)$/i);
+        if (searchForMatch && searchForMatch[1]) {
+            return searchForMatch[1].trim();
+        }
+
+        // Extract query from factual questions
+        const factualPatterns = [
+            { pattern: /what is (?:a |an |the )?([^?]+)\?/i, group: 1 },
+            { pattern: /tell me about ([^?]+)/i, group: 1 },
+            { pattern: /who is ([^?]+)/i, group: 1 },
+            { pattern: /where is ([^?]+)/i, group: 1 },
+            { pattern: /when did ([^?]+)/i, group: 1 },
+            { pattern: /how does ([^?]+)/i, group: 1 },
+            { pattern: /explain ([^?]+)/i, group: 1 },
+            { pattern: /describe ([^?]+)/i, group: 1 },
+            { pattern: /^([^?]+) facts?/i, group: 1 },
+            { pattern: /^([^?]+) information/i, group: 1 },
+            { pattern: /^([^?]+) details/i, group: 1 }
+        ];
+
+        for (const { pattern, group } of factualPatterns) {
+            const match = text.match(pattern);
+            if (match && match[group]) {
+                return match[group].trim();
+            }
+        }
+
+        return '';
     }
 }
 

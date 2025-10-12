@@ -1,5 +1,6 @@
 import React from 'react';
-import { Box, Text, Button, ButtonGroup, VStack, HStack, Badge, Progress } from '@chakra-ui/react';
+import { Box, Text, Button, VStack, HStack, Badge, Progress } from '@chakra-ui/react';
+import DOMPurify from 'dompurify';
 import { DynamicComponent } from '../services/api';
 
 // Component registry for dynamic rendering
@@ -9,11 +10,12 @@ const componentRegistry: Record<string, React.ComponentType<any>> = {
   'calculator': Calculator,
   'image-gallery': ImageGallery,
   'chart': Chart,
-  'button-group': ButtonGroup,
+  'button-group': CustomButtonGroup,
   'status-indicator': StatusIndicator,
   'form': DynamicForm,
   'list': DynamicList,
   'modal': Modal,
+  'custom-html': CustomHTMLComponent,
 };
 
 interface DynamicComponentRendererProps {
@@ -270,6 +272,49 @@ function Modal({ title, content, onClose }: any) {
         </HStack>
         <Text>{content}</Text>
       </Box>
+    </Box>
+  );
+}
+
+function CustomButtonGroup({ buttons, orientation = 'horizontal' }: any) {
+  return (
+    <Box>
+      {orientation === 'vertical' ? (
+        <VStack spacing={2}>
+          {buttons?.map((button: any, index: number) => (
+            <Button key={index} {...button} w="full">
+              {button.label || button.text || `Button ${index + 1}`}
+            </Button>
+          ))}
+        </VStack>
+      ) : (
+        <HStack spacing={2}>
+          {buttons?.map((button: any, index: number) => (
+            <Button key={index} {...button}>
+              {button.label || button.text || `Button ${index + 1}`}
+            </Button>
+          ))}
+        </HStack>
+      )}
+    </Box>
+  );
+}
+
+function CustomHTMLComponent({ html, css }: any) {
+  // Sanitize HTML to prevent XSS attacks
+  const sanitizedHTML = DOMPurify.sanitize(html, {
+    ALLOWED_TAGS: ['div', 'span', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'img', 'a', 'button', 'input', 'label', 'form', 'ul', 'ol', 'li', 'table', 'tr', 'td', 'th', 'thead', 'tbody', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside'],
+    ALLOWED_ATTR: ['class', 'id', 'style', 'src', 'alt', 'href', 'target', 'type', 'value', 'placeholder', 'disabled', 'checked', 'role', 'aria-label', 'aria-describedby'],
+    ALLOWED_URI_REGEXP: /^(?:(?:(?:f|ht)tps?|mailto|tel|callto|cid|xmpp):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i
+  });
+
+  // Basic CSS sanitization - remove dangerous properties
+  const sanitizedCSS = css ? css.replace(/javascript:|expression\(|@import|@charset|behavior:|binding:|-moz-binding:/gi, '') : '';
+
+  return (
+    <Box>
+      {sanitizedCSS && <style>{sanitizedCSS}</style>}
+      <div dangerouslySetInnerHTML={{ __html: sanitizedHTML }} />
     </Box>
   );
 }

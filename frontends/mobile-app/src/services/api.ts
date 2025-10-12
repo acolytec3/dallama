@@ -34,7 +34,7 @@ class ApiService {
     private baseUrl: string;
     private timeout: number;
 
-    constructor(baseUrl: string = 'http://localhost:3000', timeout: number = 30000) {
+    constructor(baseUrl: string = 'http://localhost:3000', timeout: number = 60000) {
         this.baseUrl = baseUrl;
         this.timeout = timeout;
     }

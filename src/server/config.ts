@@ -15,6 +15,26 @@ export interface ServerConfig {
         temperature: number;
         topP: number;
         topK: number;
+        frontendConfigs: {
+            mobile: {
+                maxTokens: number;
+                temperature: number;
+                topP: number;
+                topK: number;
+            };
+            web: {
+                maxTokens: number;
+                temperature: number;
+                topP: number;
+                topK: number;
+            };
+            'voice-only': {
+                maxTokens: number;
+                temperature: number;
+                topP: number;
+                topK: number;
+            };
+        };
     };
     tts: {
         provider: 'kokoro' | 'local';
@@ -45,11 +65,31 @@ export const config: ServerConfig = {
         credentials: true
     },
     llm: {
-        modelPath: process.env.LLM_MODEL_PATH || 'gemma-3n-E4B-it-Q3_K_M.gguf',
-        maxTokens: parseInt(process.env.LLM_MAX_TOKENS || '300'),
+        modelPath: process.env.LLM_MODEL_PATH || 'hf_bartowski_gemma-2-2b-it-Q6_K_L.gguf',
+        maxTokens: parseInt(process.env.LLM_MAX_TOKENS || '1500'),
         temperature: parseFloat(process.env.LLM_TEMPERATURE || '0.7'),
         topP: parseFloat(process.env.LLM_TOP_P || '0.8'),
-        topK: parseInt(process.env.LLM_TOP_K || '50')
+        topK: parseInt(process.env.LLM_TOP_K || '50'),
+        frontendConfigs: {
+            mobile: {
+                maxTokens: parseInt(process.env.LLM_MOBILE_MAX_TOKENS || '2000'),
+                temperature: parseFloat(process.env.LLM_MOBILE_TEMPERATURE || '0.8'),
+                topP: parseFloat(process.env.LLM_MOBILE_TOP_P || '0.9'),
+                topK: parseInt(process.env.LLM_MOBILE_TOP_K || '60')
+            },
+            web: {
+                maxTokens: parseInt(process.env.LLM_WEB_MAX_TOKENS || '1800'),
+                temperature: parseFloat(process.env.LLM_WEB_TEMPERATURE || '0.75'),
+                topP: parseFloat(process.env.LLM_WEB_TOP_P || '0.85'),
+                topK: parseInt(process.env.LLM_WEB_TOP_K || '55')
+            },
+            'voice-only': {
+                maxTokens: parseInt(process.env.LLM_VOICE_MAX_TOKENS || '800'),
+                temperature: parseFloat(process.env.LLM_VOICE_TEMPERATURE || '0.6'),
+                topP: parseFloat(process.env.LLM_VOICE_TOP_P || '0.7'),
+                topK: parseInt(process.env.LLM_VOICE_TOP_K || '40')
+            }
+        }
     },
     tts: {
         provider: (process.env.TTS_PROVIDER as 'kokoro' | 'local') || 'kokoro',
