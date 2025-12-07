@@ -12,11 +12,6 @@ function sleep(ms: number) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-export function isWebSearchPrompt(text: string): boolean {
-    // Returns true if the prompt starts with 'search for' (case-insensitive, allowing leading whitespace)
-    return /^\s*search for\b/i.test(text);
-}
-
 export async function braveWebSearch(query: string, options?: { count?: number }): Promise<BraveSearchResult[]> {
     const apiKey = process.env.BRAVE_SEARCH_API_KEY;
     if (!apiKey) {
