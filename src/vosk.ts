@@ -1,5 +1,7 @@
 import path from "path";
 import { fileURLToPath } from "url";
+import { readdir } from "fs/promises";
+import readline from "readline";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 
@@ -10,11 +12,145 @@ import { functions, setToolCallCallback, clearToolCallCallback } from "./tools/i
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const modelsDirectory = path.join(__dirname, "..", "models");
 
+/**
+ * List all available .gguf model files in the models directory
+ */
+async function listAvailableModels(): Promise<string[]> {
+    try {
+        const files = await readdir(modelsDirectory);
+        return files.filter(file => file.endsWith(".gguf")).sort();
+    } catch (error) {
+        console.error(chalk.red("Error reading models directory:"), error);
+        return [];
+    }
+}
+
+/**
+ * Display all available models in a formatted way
+ */
+function displayModels(models: string[]): void {
+    if (models.length === 0) {
+        console.log(chalk.red("No .gguf model files found in models directory!"));
+        return;
+    }
+
+    console.log(chalk.cyan("\n📦 Available models in /models directory:"));
+    console.log(chalk.gray("─".repeat(60)));
+    models.forEach((model, index) => {
+        const size = index + 1;
+        console.log(chalk.white(`  ${size.toString().padStart(2)}. `) + chalk.yellow(model));
+    });
+    console.log(chalk.gray("─".repeat(60)));
+    console.log(chalk.cyan(`Total: ${models.length} model(s) found\n`));
+}
+
+/**
+ * Parse CLI arguments
+ */
+function parseArgs(): { model?: string; listModels: boolean } {
+    const args = process.argv.slice(2);
+    const result: { model?: string; listModels: boolean } = { listModels: false };
+
+    for (let i = 0; i < args.length; i++) {
+        if (args[i] === "--model" || args[i] === "-m") {
+            if (i + 1 < args.length) {
+                result.model = args[i + 1];
+                i++;
+            }
+        } else if (args[i] === "--list-models" || args[i] === "-l") {
+            result.listModels = true;
+        } else if (args[i] === "--help" || args[i] === "-h") {
+            console.log(chalk.cyan("\nUsage: npm start [options]\n"));
+            console.log(chalk.white("Options:"));
+            console.log(chalk.gray("  -m, --model <name>     Specify model to use"));
+            console.log(chalk.gray("  -l, --list-models      List all available models and exit"));
+            console.log(chalk.gray("  -h, --help             Show this help message\n"));
+            process.exit(0);
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Display available models and get user selection
+ */
+async function selectModel(): Promise<string> {
+    const models = await listAvailableModels();
+
+    if (models.length === 0) {
+        console.error(chalk.red("No .gguf model files found in models directory!"));
+        process.exit(1);
+    }
+
+    const args = parseArgs();
+
+    // Handle --list-models flag
+    if (args.listModels) {
+        displayModels(models);
+        process.exit(0);
+    }
+
+    // Check for --model argument
+    if (args.model) {
+        if (models.includes(args.model)) {
+            console.log(chalk.green(`\n✓ Using model: ${chalk.yellow(args.model)}\n`));
+            return args.model;
+        } else {
+            console.log(chalk.red(`\n✗ Error: Model "${args.model}" not found in models directory.`));
+            displayModels(models);
+            console.log(chalk.yellow("Falling back to interactive selection...\n"));
+        }
+    } else {
+        // Show available models when no --model flag is provided
+        displayModels(models);
+    }
+
+    // Interactive selection
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+
+    return new Promise((resolve) => {
+        rl.question(chalk.cyan(`Select a model (1-${models.length}) or enter model name: `), (answer) => {
+            rl.close();
+
+            // Check if it's a number
+            const index = parseInt(answer, 10);
+            if (!isNaN(index) && index >= 1 && index <= models.length) {
+                const selectedModel = models[index - 1];
+                if (selectedModel) {
+                    console.log(chalk.green(`\n✓ Selected: ${chalk.yellow(selectedModel)}\n`));
+                    resolve(selectedModel);
+                    return;
+                }
+            } else if (models.includes(answer)) {
+                // Direct model name
+                console.log(chalk.green(`\n✓ Selected: ${chalk.yellow(answer)}\n`));
+                resolve(answer);
+                return;
+            }
+            // Fallback to default
+            const defaultModel = models[0];
+            if (!defaultModel) {
+                console.error(chalk.red("Fatal: No models available"));
+                process.exit(1);
+            }
+            console.log(chalk.yellow(`\n⚠ Invalid selection. Using default: ${chalk.cyan(defaultModel)}\n`));
+            resolve(defaultModel);
+        });
+    });
+}
+
 const llama = await getLlama();
 
-console.log(chalk.yellow("Resolving model file..."));
+// Select model
+const selectedModel = await selectModel();
+
+console.log(chalk.yellow(`\nResolving model file: ${selectedModel}...`));
 const modelPath = await resolveModelFile(
-    "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
+    selectedModel,
     modelsDirectory
 );
 
