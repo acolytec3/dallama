@@ -22,7 +22,7 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "start": "npx tsx src/vosk.ts",
+    "start": "npx tsx src/index.ts",
     "start:build": "node ./dist/index.ts",
     "prebuild": "rimraf ./dist ./tsconfig.tsbuildinfo",
     "build": "tsc --build tsconfig.json --force",
