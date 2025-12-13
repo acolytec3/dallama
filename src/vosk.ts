@@ -143,7 +143,7 @@ async function selectModel(): Promise<string> {
     });
 }
 
-const llama = await getLlama();
+const llama = await getLlama({ gpu: false });
 
 // Select model
 const selectedModel = await selectModel();
@@ -173,10 +173,7 @@ const session = new LlamaChatSession({
 
 // System prompt - optimized for helpful, factual responses
 const systemPrompt = `You are a helpful AI assistant. Keep your responses clear and concise. Your job is to answer questions factually, so limit follow-up questions to only ask for clarification if needed to provide a useful response.
-
-CRITICAL: You have access to a web_search tool. When users ask about current weather, recent news, real-time information, or anything requiring up-to-date data, you MUST use the web_search tool immediately. Do not say you cannot provide real-time information - use the tool to search and then provide the answer based on the search results.
-
-If you aren't sure of the answer or need confirmation, use the web_search tool to get a factual answer. Do not make up answers if you are not certain and have not validated with external sources.  Do not suggest verifying data elsewhere.`;
+Do not make up answers if you are not certain and have not validated with external sources.  Do not suggest verifying data elsewhere.`;
 
 // Initialize the session with the system prompt
 await session.prompt(systemPrompt);

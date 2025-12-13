@@ -15,7 +15,7 @@ const read = createInterface({
     input: process.stdin,
     output: process.stdout
 });
-const llama = await getLlama();
+const llama = await getLlama({ gpu: false });
 
 console.log(chalk.yellow("Resolving model file..."));
 const modelPath = await resolveModelFile(
