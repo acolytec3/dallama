@@ -116,12 +116,18 @@ export async function getWikipediaArticle(
         }
 
         const page = pages[0];
-        return {
+        const article: WikipediaArticle = {
             title: page.title,
             extract: page.extract || '',
             url: page.fullurl || `https://en.wikipedia.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`,
             pageId: page.pageid
         };
+
+        // Log whether we fetched the full article and a short preview
+        const extractPreview = article.extract.slice(0, 300).replace(/\s+/g, ' ');
+        console.log(`[WikipediaSearch] Retrieved ${fullArticle ? "full article" : "intro"} for "${article.title}". Preview (300 chars): ${extractPreview}`);
+
+        return article;
     } catch (error) {
         console.error('[WikipediaSearch] Error fetching article:', error);
         throw error;
@@ -173,6 +179,7 @@ export async function searchWikipediaWithDetails(
         topArticle
     };
 }
+
 
 
 
