@@ -7,7 +7,8 @@ import cors from "@fastify/cors";
 
 import chalk from "chalk";
 import { getLlama, LlamaChatSession, resolveModelFile } from "node-llama-cpp";
-import { functions, setToolCallCallback, clearToolCallCallback } from "./tools/index.js";
+import { functions, setToolCallCallback, clearToolCallCallback, registerArticleSummarizer } from "./tools/index.js";
+import { createGemmaSummarizer } from "./gemmaSummarizer.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const modelsDirectory = path.join(__dirname, "..", "models");
@@ -144,6 +145,15 @@ async function selectModel(): Promise<string> {
 }
 
 const llama = await getLlama({ gpu: false });
+
+// Initialize lightweight Gemma 270M summarizer to preprocess long articles
+try {
+    const summarizer = await createGemmaSummarizer(modelsDirectory, llama);
+    registerArticleSummarizer(summarizer);
+    console.log(chalk.green("[Gemma270M] Summarizer ready"));
+} catch (error) {
+    console.log(chalk.yellow("[Gemma270M] Summarizer unavailable; continuing without it"), error);
+}
 
 // Select model
 const selectedModel = await selectModel();

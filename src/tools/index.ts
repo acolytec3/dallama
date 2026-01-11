@@ -2,9 +2,11 @@ import { defineChatSessionFunction } from "node-llama-cpp";
 import chalk from "chalk";
 import { braveWebSearch } from "../braveSearch.js";
 import { searchWikipediaWithDetails } from "../wikipediaSearch.js";
+import type { ArticleSummarizer } from "../gemmaSummarizer.js";
 
 // Callback for tool call notifications
 let toolCallCallback: ((toolName: string) => void) | null = null;
+let articleSummarizer: ArticleSummarizer | null = null;
 
 /**
  * Set a callback to be notified when a tool is called
@@ -18,6 +20,13 @@ export function setToolCallCallback(callback: (toolName: string) => void) {
  */
 export function clearToolCallCallback() {
     toolCallCallback = null;
+}
+
+/**
+ * Register a secondary model-based summarizer used to condense long articles
+ */
+export function registerArticleSummarizer(summarizer: ArticleSummarizer) {
+    articleSummarizer = summarizer;
 }
 
 /**
@@ -203,9 +212,37 @@ export const wikipediaSearchFunction = defineChatSessionFunction({
 
             // If we have a top article with detailed extract, use that as the primary content
             if (topArticle && topArticle.extract) {
-                formattedResults += `Wikipedia Article: ${topArticle.title}\n\n`;
-                formattedResults += `${topArticle.extract}\n\n`;
-                formattedResults += `Source: ${topArticle.url}\n\n`;
+                let summarized = "";
+                let summaryTimeMs: number | null = null;
+                if (articleSummarizer) {
+                    try {
+                        console.log(chalk.blue("[Gemma270M] Summarizing article for main model..."));
+                        const summarizeStart = Date.now();
+                        summarized = await articleSummarizer({
+                            topic: keyword,
+                            article: topArticle.extract,
+                            sourceUrl: topArticle.url
+                        });
+                        summaryTimeMs = Date.now() - summarizeStart;
+                        console.log(chalk.green(`[Gemma270M] Summary ready in ${summaryTimeMs}ms`));
+                    } catch (error) {
+                        console.log(chalk.yellow("[Gemma270M] Summary failed, falling back to raw extract"), error);
+                    }
+                }
+
+                if (summarized) {
+                    formattedResults += `Wikipedia Article Summary (Gemma 270M): ${topArticle.title}\n\n`;
+                    formattedResults += `${summarized}\n\n`;
+                    formattedResults += `Original Source: ${topArticle.url}\n`;
+                    if (summaryTimeMs !== null) {
+                        formattedResults += `Summarization time (ms): ${summaryTimeMs}\n`;
+                    }
+                    formattedResults += "\n";
+                } else {
+                    formattedResults += `Wikipedia Article: ${topArticle.title}\n\n`;
+                    formattedResults += `${topArticle.extract}\n\n`;
+                    formattedResults += `Source: ${topArticle.url}\n\n`;
+                }
                 formattedResults += "---\n\n";
             }
 
