@@ -34,26 +34,58 @@ const MicRecorder = ({ onAudio }: MicRecorderProps) => {
         const audioBlob = new Blob(audioChunks.current, { type: "audio/webm" });
         audioChunks.current = [];
         
-        // Convert to 16kHz mono AudioBuffer for Vosk
-        const audioContext = new AudioContext({ sampleRate: 16000 });
+        // Decode the audio (browser may use native sample rate like 48kHz)
+        const audioContext = new AudioContext();
         const arrayBuffer = await audioBlob.arrayBuffer();
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        const decodedBuffer = await audioContext.decodeAudioData(arrayBuffer);
         
-        // Convert to mono if needed
-        let monoBuffer = audioBuffer;
-        if (audioBuffer.numberOfChannels > 1) {
-          monoBuffer = audioContext.createBuffer(1, audioBuffer.length, 16000);
-          const monoData = monoBuffer.getChannelData(0);
-          
-          // Mix all channels to mono
-          for (let i = 0; i < audioBuffer.length; i++) {
+        console.log("Decoded audio:", {
+          sampleRate: decodedBuffer.sampleRate,
+          channels: decodedBuffer.numberOfChannels,
+          length: decodedBuffer.length,
+          duration: decodedBuffer.duration
+        });
+        
+        // Get mono channel data (mix if stereo)
+        let monoData: Float32Array;
+        if (decodedBuffer.numberOfChannels === 1) {
+          monoData = decodedBuffer.getChannelData(0);
+        } else {
+          monoData = new Float32Array(decodedBuffer.length);
+          for (let i = 0; i < decodedBuffer.length; i++) {
             let sum = 0;
-            for (let channel = 0; channel < audioBuffer.numberOfChannels; channel++) {
-              sum += audioBuffer.getChannelData(channel)[i];
+            for (let ch = 0; ch < decodedBuffer.numberOfChannels; ch++) {
+              sum += decodedBuffer.getChannelData(ch)[i];
             }
-            monoData[i] = sum / audioBuffer.numberOfChannels;
+            monoData[i] = sum / decodedBuffer.numberOfChannels;
           }
         }
+        
+        // Resample to 16kHz if needed
+        let resampledData = monoData;
+        const sourceSampleRate = decodedBuffer.sampleRate;
+        if (sourceSampleRate !== 16000) {
+          console.log(`Resampling from ${sourceSampleRate}Hz to 16000Hz`);
+          const ratio = sourceSampleRate / 16000;
+          const newLength = Math.floor(monoData.length / ratio);
+          resampledData = new Float32Array(newLength);
+          for (let i = 0; i < newLength; i++) {
+            const srcIndex = Math.floor(i * ratio);
+            resampledData[i] = monoData[srcIndex];
+          }
+        }
+        
+        // Create 16kHz mono AudioBuffer for Vosk
+        const targetContext = new AudioContext({ sampleRate: 16000 });
+        const monoBuffer = targetContext.createBuffer(1, resampledData.length, 16000);
+        monoBuffer.copyToChannel(resampledData, 0);
+        
+        console.log("Final audio buffer for Vosk:", {
+          sampleRate: monoBuffer.sampleRate,
+          channels: monoBuffer.numberOfChannels,
+          length: monoBuffer.length,
+          duration: monoBuffer.duration
+        });
         
         onAudio(monoBuffer);
       };
@@ -70,22 +102,22 @@ const MicRecorder = ({ onAudio }: MicRecorderProps) => {
   };
 
   return (
-    <VStack gap={{ base: 4, md: 6 }} w="100%" maxW="100%">
+    <VStack gap={{ base: 2, md: 3 }} w="100%" maxW="100%">
       <Button 
         bg={recording ? "red.500" : "blue.500"}
         color="white"
         onClick={recording ? handleStop : handleStart} 
-        size={{ base: "lg", md: "xl" }}
-        h={{ base: "60px", md: "70px" }}
-        w={{ base: "200px", md: "250px" }}
-        fontSize={{ base: "lg", md: "xl" }}
+        size={{ base: "md", md: "lg" }}
+        h={{ base: "50px", md: "60px" }}
+        w={{ base: "160px", md: "200px" }}
+        fontSize={{ base: "sm", md: "md" }}
         fontWeight="bold"
         borderRadius="full"
-        boxShadow="lg"
+        boxShadow="md"
         _hover={{
           bg: recording ? "red.600" : "blue.600",
-          transform: "translateY(-2px)",
-          boxShadow: "xl"
+          transform: "translateY(-1px)",
+          boxShadow: "lg"
         }}
         _active={{
           bg: recording ? "red.700" : "blue.700",
@@ -93,16 +125,16 @@ const MicRecorder = ({ onAudio }: MicRecorderProps) => {
         }}
         transition="all 0.2s"
       >
-        {recording ? "Stop Recording" : "Start Recording"}
+        {recording ? "Stop" : "Record"}
       </Button>
       
       {error && (
         <Text 
           color="red.600" 
-          fontSize={{ base: "sm", md: "md" }}
+          fontSize={{ base: "xs", md: "sm" }}
           textAlign="center"
           bg="red.50"
-          p={3}
+          p={2}
           borderRadius="md"
           border="1px solid"
           borderColor="red.200"
@@ -114,13 +146,13 @@ const MicRecorder = ({ onAudio }: MicRecorderProps) => {
       )}
       
       <Text 
-        fontSize={{ base: "md", md: "lg" }} 
+        fontSize={{ base: "xs", md: "sm" }} 
         color="gray.700"
         textAlign="center"
         fontWeight="medium"
         maxW="100%"
       >
-        {recording ? "Recording..." : "Press to record your voice."}
+        {recording ? "Recording..." : "Tap to record"}
       </Text>
     </VStack>
   );

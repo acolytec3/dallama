@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { unifiedLLMService, ChatRequest, ChatResponse, LLMMode } from '../services/unifiedLLMService';
+import { llmService, ChatRequest, ChatResponse, SSEChunk } from '../services/llmService';
 
 export interface ConversationMessage {
     id: string;
@@ -13,8 +13,6 @@ export interface ConversationState {
     isLoading: boolean;
     error: string | null;
     isConnected: boolean;
-    llmMode: LLMMode;
-    localLLMStatus: { isInitializing: boolean; isReady: boolean };
 }
 
 export function useConversation() {
@@ -23,19 +21,16 @@ export function useConversation() {
         isLoading: false,
         error: null,
         isConnected: false,
-        llmMode: unifiedLLMService.getMode(),
-        localLLMStatus: unifiedLLMService.getLocalLLMStatus(),
     });
 
     const testConnection = useCallback(async () => {
         try {
             console.log("Testing LLM connection...");
-            const isConnected = await unifiedLLMService.testConnection();
+            const isConnected = await llmService.testConnection();
             console.log("LLM connection test result:", isConnected);
             setState(prev => ({
                 ...prev,
                 isConnected,
-                localLLMStatus: unifiedLLMService.getLocalLLMStatus()
             }));
             return isConnected;
         } catch {
@@ -43,7 +38,6 @@ export function useConversation() {
             setState(prev => ({
                 ...prev,
                 isConnected: false,
-                localLLMStatus: unifiedLLMService.getLocalLLMStatus()
             }));
             return false;
         }
@@ -89,6 +83,9 @@ export function useConversation() {
 
         // Don't add a new user message here since updateCurrentMessage already did that
         // Just set loading state and send to LLM
+        let aiMessageId: string | null = null;
+        let accumulatedText = '';
+
         setState(prev => ({
             ...prev,
             isLoading: true,
@@ -102,24 +99,153 @@ export function useConversation() {
             };
 
             console.log("Sending request to LLM:", request);
-            const response: ChatResponse = await unifiedLLMService.sendMessage(request);
-            console.log("Received response from LLM:", response);
+            
+            // Handle SSE streaming with onChunk callback
+            const response: ChatResponse = await llmService.sendMessage(request, (chunk: SSEChunk) => {
+                console.log("Received SSE chunk:", chunk);
+                
+                if (chunk.type === 'chunk' && chunk.text) {
+                    // Accumulate streaming text
+                    accumulatedText += chunk.text;
+                    
+                    // Update or create AI message with streaming text
+                    setState(prev => {
+                        const updatedMessages = [...prev.messages];
+                        
+                        if (aiMessageId) {
+                            // Update existing message
+                            const index = updatedMessages.findIndex(m => m.id === aiMessageId);
+                            if (index >= 0) {
+                                updatedMessages[index] = {
+                                    ...updatedMessages[index],
+                                    text: accumulatedText,
+                                };
+                            }
+                        } else {
+                            // Create new AI message
+                            aiMessageId = Date.now().toString();
+                            const newMessage: ConversationMessage = {
+                                id: aiMessageId,
+                                text: accumulatedText,
+                                timestamp: new Date().toISOString(),
+                                type: 'ai',
+                            };
+                            updatedMessages.push(newMessage);
+                        }
+                        
+                        return {
+                            ...prev,
+                            messages: updatedMessages,
+                        };
+                    });
+                } else if (chunk.type === 'tool_call' && chunk.message) {
+                    // Show tool call message (e.g., "Just a moment while I check on that.")
+                    setState(prev => {
+                        const updatedMessages = [...prev.messages];
+                        
+                        if (!aiMessageId) {
+                            aiMessageId = Date.now().toString();
+                            const newMessage: ConversationMessage = {
+                                id: aiMessageId,
+                                text: chunk.message || '',
+                                timestamp: new Date().toISOString(),
+                                type: 'ai',
+                            };
+                            updatedMessages.push(newMessage);
+                        } else {
+                            const index = updatedMessages.findIndex(m => m.id === aiMessageId);
+                            if (index >= 0) {
+                                updatedMessages[index] = {
+                                    ...updatedMessages[index],
+                                    text: chunk.message || accumulatedText,
+                                };
+                            }
+                        }
+                        
+                        return {
+                            ...prev,
+                            messages: updatedMessages,
+                        };
+                    });
+                } else if (chunk.type === 'done' && chunk.message) {
+                    // Final message received
+                    accumulatedText = chunk.message;
+                    setState(prev => {
+                        const updatedMessages = [...prev.messages];
+                        
+                        if (aiMessageId) {
+                            const index = updatedMessages.findIndex(m => m.id === aiMessageId);
+                            if (index >= 0) {
+                                updatedMessages[index] = {
+                                    ...updatedMessages[index],
+                                    text: chunk.message || accumulatedText,
+                                    timestamp: chunk.timestamp || new Date().toISOString(),
+                                };
+                            }
+                        } else {
+                            aiMessageId = Date.now().toString();
+                            const newMessage: ConversationMessage = {
+                                id: aiMessageId,
+                                text: chunk.message,
+                                timestamp: chunk.timestamp || new Date().toISOString(),
+                                type: 'ai',
+                            };
+                            updatedMessages.push(newMessage);
+                        }
+                        
+                        return {
+                            ...prev,
+                            messages: updatedMessages,
+                            isLoading: false,
+                            error: null,
+                        };
+                    });
+                } else if (chunk.type === 'error') {
+                    throw new Error(chunk.error || chunk.message || 'Unknown error');
+                }
+            });
+            
+            console.log("Received final response from LLM:", response);
 
-            const aiMessage: ConversationMessage = {
-                id: (Date.now() + 1).toString(),
-                text: response.message,
-                timestamp: response.timestamp,
-                type: 'ai',
-            };
-
-            console.log("Adding AI message to state:", aiMessage);
-
-            setState(prev => ({
-                ...prev,
-                messages: [...prev.messages, aiMessage],
-                isLoading: false,
-                error: null,
-            }));
+            // Ensure final message is set (in case done event wasn't processed)
+            if (response.message && (!aiMessageId || accumulatedText !== response.message)) {
+                setState(prev => {
+                    const updatedMessages = [...prev.messages];
+                    
+                    if (aiMessageId) {
+                        const index = updatedMessages.findIndex(m => m.id === aiMessageId);
+                        if (index >= 0) {
+                            updatedMessages[index] = {
+                                ...updatedMessages[index],
+                                text: response.message,
+                                timestamp: response.timestamp,
+                            };
+                        }
+                    } else {
+                        const aiMessage: ConversationMessage = {
+                            id: Date.now().toString(),
+                            text: response.message,
+                            timestamp: response.timestamp,
+                            type: 'ai',
+                        };
+                        updatedMessages.push(aiMessage);
+                    }
+                    
+                    return {
+                        ...prev,
+                        messages: updatedMessages,
+                        isLoading: false,
+                        error: null,
+                    };
+                });
+            } else {
+                // Just update loading state if message was already set via streaming
+                setState(prev => ({
+                    ...prev,
+                    isLoading: false,
+                    error: null,
+                }));
+            }
         } catch (error) {
             console.error("Error in sendMessage:", error);
             const errorMessage = error instanceof Error ? error.message : 'Failed to get response from AI';
@@ -147,15 +273,6 @@ export function useConversation() {
         }));
     }, []);
 
-    const setLLMMode = useCallback((mode: LLMMode) => {
-        unifiedLLMService.setMode(mode);
-        setState(prev => ({
-            ...prev,
-            llmMode: mode,
-            localLLMStatus: unifiedLLMService.getLocalLLMStatus(),
-        }));
-    }, []);
-
     return {
         ...state,
         sendMessage,
@@ -163,6 +280,5 @@ export function useConversation() {
         clearConversation,
         clearError,
         testConnection,
-        setLLMMode,
     };
 } 

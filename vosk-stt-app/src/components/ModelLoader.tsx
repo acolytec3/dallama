@@ -38,29 +38,29 @@ const ModelLoader = ({ onReady }: ModelLoaderProps) => {
   if (loading) {
     return (
       <VStack 
-        gap={{ base: 4, md: 6 }} 
-        p={{ base: 6, md: 8 }}
+        gap={{ base: 2, md: 3 }} 
+        p={{ base: 3, md: 4 }}
         w="100%"
         maxW="100%"
         textAlign="center"
       >
         <Spinner 
-          size={{ base: "xl", md: "xl" }} 
+          size={{ base: "md", md: "lg" }} 
           color="blue.600" 
         />
         <Text 
-          fontSize={{ base: "lg", md: "xl" }}
+          fontSize={{ base: "sm", md: "md" }}
           color="gray.800"
           fontWeight="medium"
         >
-          Loading Vosk model...
+          Loading model...
         </Text>
         <Text 
-          fontSize={{ base: "sm", md: "md" }} 
+          fontSize={{ base: "xs", md: "sm" }} 
           color="gray.600"
           maxW="100%"
         >
-          This may take a few moments on first load.
+          Please wait...
         </Text>
       </VStack>
     );
@@ -70,17 +70,17 @@ const ModelLoader = ({ onReady }: ModelLoaderProps) => {
     return (
       <Box 
         textAlign="center" 
-        p={{ base: 6, md: 8 }}
+        p={{ base: 3, md: 4 }}
         w="100%"
         maxW="100%"
       >
         <Text 
           color="red.600" 
-          mb={3}
-          fontSize={{ base: "md", md: "lg" }}
+          mb={2}
+          fontSize={{ base: "xs", md: "sm" }}
           fontWeight="medium"
           bg="red.50"
-          p={3}
+          p={2}
           borderRadius="md"
           border="1px solid"
           borderColor="red.200"
@@ -88,11 +88,11 @@ const ModelLoader = ({ onReady }: ModelLoaderProps) => {
           {error}
         </Text>
         <Text 
-          fontSize={{ base: "sm", md: "md" }} 
+          fontSize={{ base: "xs", md: "sm" }} 
           color="gray.600"
           maxW="100%"
         >
-          Please check your internet connection and try again.
+          Check connection and try again.
         </Text>
       </Box>
     );

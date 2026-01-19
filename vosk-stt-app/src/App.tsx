@@ -3,7 +3,6 @@ import { useState, useEffect } from "react";
 import ModelLoader from "./components/ModelLoader";
 import MicRecorder from "./components/MicRecorder";
 import ConversationDisplay from "./components/ConversationDisplay";
-import LLMModeToggle from "./components/LLMModeToggle";
 import { useConversation } from "./hooks/useConversation";
 
 export default function App() {
@@ -12,7 +11,6 @@ export default function App() {
   const [recognizing, setRecognizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Temporarily use light mode until import issue is resolved
   const isDark = false;
 
   const {
@@ -20,14 +18,11 @@ export default function App() {
     isLoading: llmLoading,
     error: llmError,
     isConnected,
-    llmMode,
-    localLLMStatus,
     sendMessage,
     updateCurrentMessage,
     clearConversation,
     clearError: clearLlmError,
     testConnection,
-    setLLMMode,
   } = useConversation();
 
   // Test LLM connection on component mount
@@ -46,34 +41,70 @@ export default function App() {
       const recognizer = new (model as any).KaldiRecognizer(16000);
       console.log("Recognizer created successfully");
       
-      recognizer.acceptWaveform(audioBuffer);
-      console.log("Audio sent to recognizer");
+      console.log("Audio buffer info:", {
+        sampleRate: audioBuffer.sampleRate,
+        channels: audioBuffer.numberOfChannels,
+        length: audioBuffer.length,
+        duration: audioBuffer.duration
+      });
       
-      // Set up event listeners for results      
+      // Track last transcript to send only once when stable
+      let lastTranscript = '';
+      let sendTimeout: ReturnType<typeof setTimeout> | null = null;
+      
+      // Set up event listeners BEFORE sending audio
       recognizer.on("partialresult", (message: { result: { partial: string } }) => {
-        console.log("Partial result:", message);
+        console.log("Partial result event:", message);
         if (message.result && message.result.partial) {
-          const partialTranscript = message.result.partial;
+          const partialTranscript = message.result.partial.trim();
           console.log("Partial transcript:", partialTranscript);
           
-          // Update the conversation with partial results
-          if (partialTranscript.trim()) {
+          if (partialTranscript) {
+            lastTranscript = partialTranscript;
             updateCurrentMessage(partialTranscript);
             
-            // Send to LLM immediately since Vosk doesn't add punctuation
-            // and we're manually controlling recording start/stop
-            if (isConnected && partialTranscript.trim()) {
-              console.log("Sending partial result to LLM:", partialTranscript);
-              sendMessage(partialTranscript);
-            }
+            // Debounce: wait 300ms after last partial before sending to LLM
+            if (sendTimeout) clearTimeout(sendTimeout);
+            sendTimeout = setTimeout(() => {
+              if (lastTranscript && isConnected) {
+                console.log("Sending to LLM:", lastTranscript);
+                sendMessage(lastTranscript);
+                setRecognizing(false);
+              }
+            }, 300);
           }
         }
       });
       
+      recognizer.on("result", (message: { result: { text: string } }) => {
+        console.log("Result event:", message);
+        
+        // Cancel debounce timeout if we get a final result
+        if (sendTimeout) clearTimeout(sendTimeout);
+        
+        if (message.result && message.result.text) {
+          const finalTranscript = message.result.text.trim();
+          console.log("Final transcript:", finalTranscript);
+          
+          if (finalTranscript) {
+            updateCurrentMessage(finalTranscript);
+            
+            if (isConnected) {
+              console.log("Sending to LLM:", finalTranscript);
+              sendMessage(finalTranscript);
+            }
+          }
+        }
+        setRecognizing(false);
+      });
+      
+      // Now send the audio
+      recognizer.acceptWaveform(audioBuffer);
+      console.log("Audio sent to recognizer");
+      
     } catch (err) {
       console.error("Recognition error:", err);
       setError(`Recognition failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
-    } finally {
       setRecognizing(false);
     }
   };
@@ -85,21 +116,21 @@ export default function App() {
     <Box 
       minH="100vh" 
       bg={bgColor} 
-      p={{ base: 4, md: 6 }}
+      p={{ base: 2, md: 4 }}
       maxW="100vw"
       overflowX="hidden"
     >
       <Stack 
-        gap={{ base: 6, md: 8 }} 
+        gap={{ base: 3, md: 4 }} 
         alignItems="center" 
         direction="column"
         maxW="100%"
-        px={{ base: 2, md: 4 }}
+        px={{ base: 1, md: 2 }}
       >
         <Heading 
           as="h1" 
-          size={{ base: "lg", md: "xl" }} 
-          mt={{ base: 6, md: 8 }}
+          size={{ base: "md", md: "lg" }} 
+          mt={{ base: 2, md: 4 }}
           color={textColor}
           fontWeight="bold"
           textAlign="center"
@@ -111,19 +142,12 @@ export default function App() {
         
         {modelLoaded && (
           <>
-            <LLMModeToggle
-              mode={llmMode}
-              onModeChange={setLLMMode}
-              isConnected={isConnected}
-              localLLMStatus={localLLMStatus}
-            />
-            
             <MicRecorder onAudio={handleAudio} />
             
             {recognizing && (
               <Text 
                 color={isDark ? "blue.300" : "blue.600"} 
-                fontSize={{ base: "md", md: "lg" }}
+                fontSize={{ base: "sm", md: "md" }}
                 fontWeight="medium"
                 textAlign="center"
               >
@@ -134,10 +158,10 @@ export default function App() {
             {error && (
               <Text 
                 color={isDark ? "red.300" : "red.600"} 
-                fontSize={{ base: "sm", md: "md" }}
+                fontSize={{ base: "xs", md: "sm" }}
                 textAlign="center"
                 bg={isDark ? "red.900" : "red.50"}
-                p={3}
+                p={2}
                 borderRadius="md"
                 border="1px solid"
                 borderColor={isDark ? "red.600" : "red.200"}
@@ -150,35 +174,18 @@ export default function App() {
             {!isConnected && (
               <Text 
                 color={isDark ? "yellow.300" : "yellow.600"} 
-                fontSize={{ base: "sm", md: "md" }}
+                fontSize={{ base: "xs", md: "sm" }}
                 textAlign="center"
                 bg={isDark ? "yellow.900" : "yellow.50"}
-                p={3}
+                p={2}
                 borderRadius="md"
                 border="1px solid"
                 borderColor={isDark ? "yellow.600" : "yellow.200"}
                 maxW="100%"
               >
-                ⚠️ AI not connected. Speech will be transcribed but not sent to AI.
+                ⚠️ AI not connected
               </Text>
             )}
-
-            {/* Debug test button */}
-            <Button
-              onClick={() => {
-                console.log("Manual test button clicked");
-                console.log("isConnected:", isConnected);
-                console.log("messages:", messages);
-                sendMessage("This is a test message from the debug button");
-              }}
-              variant="outline"
-              size={{ base: "sm", md: "md" }}
-              colorScheme="green"
-              maxW={{ base: "200px", md: "250px" }}
-              w="100%"
-            >
-              Test LLM Connection
-            </Button>
             
             <ConversationDisplay 
               messages={messages}
@@ -191,12 +198,12 @@ export default function App() {
               <Button
                 onClick={clearConversation}
                 variant="outline"
-                size={{ base: "md", md: "lg" }}
+                size={{ base: "sm", md: "md" }}
                 colorScheme="gray"
-                maxW={{ base: "200px", md: "250px" }}
+                maxW={{ base: "180px", md: "200px" }}
                 w="100%"
               >
-                Clear Conversation
+                Clear
               </Button>
             )}
           </>

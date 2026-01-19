@@ -1,5 +1,4 @@
 import { Box, Text, VStack, HStack, Spinner, IconButton } from "@chakra-ui/react";
- import { useColorMode } from "./ui/color-mode"; // Temporarily disabled due to import issues
 import { ConversationMessage } from "../hooks/useConversation";
 
 interface ConversationDisplayProps {
@@ -15,8 +14,7 @@ export default function ConversationDisplay({
   error, 
   onClearError 
 }: ConversationDisplayProps) {
-  // Temporarily use light mode until import issue is resolved
-  const isDark = useColorMode().colorMode === "dark";
+  const isDark = false;
   
   const bgColor = isDark ? "gray.800" : "white";
   const borderColor = isDark ? "gray.600" : "gray.200";
@@ -34,21 +32,21 @@ export default function ConversationDisplay({
   if (messages.length === 0 && !isLoading && !error) {
     return (
       <Box 
-        p={6} 
+        p={3} 
         bg={bgColor} 
-        borderRadius="lg" 
-        boxShadow="lg" 
+        borderRadius="md" 
+        boxShadow="sm" 
         border="1px solid"
         borderColor={borderColor}
         textAlign="center"
-        maxW={{ base: "100%", md: "lg" }}
+        maxW="100%"
         w="100%"
       >
         <Text 
           color={placeholderColor}
-          fontSize={{ base: "md", md: "lg" }}
+          fontSize={{ base: "xs", md: "sm" }}
         >
-          Start speaking to begin a conversation with AI
+          Start speaking to begin
         </Text>
       </Box>
     );
@@ -56,35 +54,36 @@ export default function ConversationDisplay({
 
   return (
     <VStack 
-      gap={4} 
-      maxW={{ base: "100%", md: "lg" }}
+      gap={2} 
+      maxW="100%"
       w="100%"
       alignItems="stretch"
     >
       {messages.map((message) => (
         <Box
           key={message.id}
-          p={4}
+          p={2}
           bg={message.type === 'user' ? userBgColor : aiBgColor}
-          borderRadius="lg"
+          borderRadius="md"
           border="1px solid"
           borderColor={borderColor}
           alignSelf={message.type === 'user' ? 'flex-end' : 'flex-start'}
-          maxW="80%"
+          maxW="85%"
           w="fit-content"
         >
           <Text
-            fontSize={{ base: "sm", md: "md" }}
+            fontSize={{ base: "xs", md: "sm" }}
             color={message.type === 'user' ? userTextColor : aiTextColor}
-            lineHeight="1.5"
+            lineHeight="1.4"
             whiteSpace="pre-wrap"
+            wordBreak="break-word"
           >
             {message.text}
           </Text>
           <Text
-            fontSize="xs"
+            fontSize="2xs"
             color={placeholderColor}
-            mt={2}
+            mt={1}
             textAlign="right"
           >
             {new Date(message.timestamp).toLocaleTimeString()}
@@ -94,36 +93,36 @@ export default function ConversationDisplay({
 
       {isLoading && (
         <HStack 
-          p={4} 
+          p={2} 
           bg={aiBgColor} 
-          borderRadius="lg" 
+          borderRadius="md" 
           border="1px solid"
           borderColor={borderColor}
           alignSelf="flex-start"
-          maxW="80%"
+          maxW="85%"
         >
-          <Spinner size="sm" color={spinnerColor} />
+          <Spinner size="xs" color={spinnerColor} />
           <Text 
-            fontSize={{ base: "sm", md: "md" }}
+            fontSize={{ base: "xs", md: "sm" }}
             color={aiTextColor}
           >
-            AI is thinking...
+            Thinking...
           </Text>
         </HStack>
       )}
 
       {error && (
         <Box
-          p={4}
+          p={2}
           bg={errorBgColor}
-          borderRadius="lg"
+          borderRadius="md"
           border="1px solid"
           borderColor={errorBorderColor}
           maxW="100%"
         >
           <HStack justify="space-between" align="start">
             <Text
-              fontSize={{ base: "sm", md: "md" }}
+              fontSize={{ base: "xs", md: "sm" }}
               color={errorTextColor}
               flex={1}
             >
@@ -131,7 +130,7 @@ export default function ConversationDisplay({
             </Text>
             <IconButton
               aria-label="Clear error"
-              size="sm"
+              size="xs"
               variant="ghost"
               onClick={onClearError}
               color={errorIconColor}
