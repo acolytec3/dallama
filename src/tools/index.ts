@@ -8,6 +8,9 @@ import type { ArticleSummarizer } from "../gemmaSummarizer.js";
 let toolCallCallback: ((toolName: string) => void) | null = null;
 let articleSummarizer: ArticleSummarizer | null = null;
 
+// Track if Wikipedia search was already called in the current request
+let wikipediaSearchCalledThisRequest = false;
+
 /**
  * Set a callback to be notified when a tool is called
  */
@@ -16,10 +19,11 @@ export function setToolCallCallback(callback: (toolName: string) => void) {
 }
 
 /**
- * Clear the tool call callback
+ * Clear the tool call callback and reset per-request state
  */
 export function clearToolCallCallback() {
     toolCallCallback = null;
+    wikipediaSearchCalledThisRequest = false;
 }
 
 /**
@@ -148,6 +152,20 @@ export const wikipediaSearchFunction = defineChatSessionFunction({
         const toolStartTime = Date.now();
         const { keyword, fullArticle } = params;
 
+        // Check if Wikipedia was already called this request - only allow one call
+        if (wikipediaSearchCalledThisRequest) {
+            console.log(chalk.yellow("\n" + "=".repeat(80)));
+            console.log(chalk.yellow.bold("[🔧 TOOL CALL] wikipedia_search - BLOCKED (already called this request)"));
+            console.log(chalk.yellow("=".repeat(80)));
+            console.log(chalk.cyan("Arguments:"), JSON.stringify(params, null, 2));
+            console.log(chalk.yellow("Returning cached/previous result - only one Wikipedia search allowed per request"));
+            console.log(chalk.yellow("=".repeat(80) + "\n"));
+            return "Wikipedia was already searched for this request. Please use the information already provided, or respond based on your existing knowledge.";
+        }
+
+        // Mark Wikipedia as called for this request
+        wikipediaSearchCalledThisRequest = true;
+
         // Notify callback that tool is being called
         if (toolCallCallback) {
             toolCallCallback("wikipedia_search");
@@ -186,7 +204,7 @@ export const wikipediaSearchFunction = defineChatSessionFunction({
                 console.log(chalk.yellow(`⏱️  Search API time: ${searchTime}ms`));
                 console.log(chalk.yellow(`⏱️  Total execution time: ${toolTime}ms`));
                 console.log(chalk.magenta("=".repeat(80) + "\n"));
-                return `No Wikipedia articles found for "${keyword}".`;
+                return `I couldn't find any Wikipedia articles about "${keyword}". Please respond based on your existing knowledge, or let the user know you don't have information on this topic.`;
             }
 
             // Log search results summary
