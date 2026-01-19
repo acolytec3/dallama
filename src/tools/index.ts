@@ -10,6 +10,8 @@ let articleSummarizer: ArticleSummarizer | null = null;
 
 // Track if Wikipedia search was already called in the current request
 let wikipediaSearchCalledThisRequest = false;
+// Track if general knowledge tool was already called in the current request
+let generalKnowledgeCalledThisRequest = false;
 
 /**
  * Set a callback to be notified when a tool is called
@@ -24,6 +26,7 @@ export function setToolCallCallback(callback: (toolName: string) => void) {
 export function clearToolCallCallback() {
     toolCallCallback = null;
     wikipediaSearchCalledThisRequest = false;
+    generalKnowledgeCalledThisRequest = false;
 }
 
 /**
@@ -225,42 +228,14 @@ export const wikipediaSearchFunction = defineChatSessionFunction({
                 }
             });
 
-            // Format results for the LLM
+            // Format results for the LLM - provide raw Wikipedia content without summarization
             let formattedResults = "";
 
-            // If we have a top article with detailed extract, use that as the primary content
+            // If we have a top article with detailed extract, include it
             if (topArticle && topArticle.extract) {
-                let summarized = "";
-                let summaryTimeMs: number | null = null;
-                if (articleSummarizer) {
-                    try {
-                        console.log(chalk.blue("[Gemma270M] Summarizing article for main model..."));
-                        const summarizeStart = Date.now();
-                        summarized = await articleSummarizer({
-                            topic: keyword,
-                            article: topArticle.extract,
-                            sourceUrl: topArticle.url
-                        });
-                        summaryTimeMs = Date.now() - summarizeStart;
-                        console.log(chalk.green(`[Gemma270M] Summary ready in ${summaryTimeMs}ms`));
-                    } catch (error) {
-                        console.log(chalk.yellow("[Gemma270M] Summary failed, falling back to raw extract"), error);
-                    }
-                }
-
-                if (summarized) {
-                    formattedResults += `Wikipedia Article Summary (Gemma 270M): ${topArticle.title}\n\n`;
-                    formattedResults += `${summarized}\n\n`;
-                    formattedResults += `Original Source: ${topArticle.url}\n`;
-                    if (summaryTimeMs !== null) {
-                        formattedResults += `Summarization time (ms): ${summaryTimeMs}\n`;
-                    }
-                    formattedResults += "\n";
-                } else {
-                    formattedResults += `Wikipedia Article: ${topArticle.title}\n\n`;
-                    formattedResults += `${topArticle.extract}\n\n`;
-                    formattedResults += `Source: ${topArticle.url}\n\n`;
-                }
+                formattedResults += `Wikipedia Article: ${topArticle.title}\n\n`;
+                formattedResults += `${topArticle.extract}\n\n`;
+                formattedResults += `Source: ${topArticle.url}\n\n`;
                 formattedResults += "---\n\n";
             }
 
@@ -298,9 +273,137 @@ export const wikipediaSearchFunction = defineChatSessionFunction({
 });
 
 /**
+ * Define the general_knowledge function for answering "tell me about X" style questions
+ * Uses Wikipedia + Gemma summarizer to provide concise, informative responses
+ */
+export const generalKnowledgeFunction = defineChatSessionFunction({
+    description: "Get general information about a subject or topic. Use this tool when users ask questions like 'Tell me about X', 'What is X?', 'Explain X', or want to learn general facts about a subject (animals, plants, people, places, concepts, etc.). This tool fetches information from Wikipedia and provides a concise, summarized answer. Perfect for educational or informational queries about any topic.",
+    params: {
+        type: "object",
+        properties: {
+            subject: {
+                type: "string",
+                description: "The subject or topic to learn about (e.g., 'poison dart frog', 'Albert Einstein', 'black holes', 'the Roman Empire')"
+            }
+        },
+        required: ["subject"]
+    },
+    async handler(params) {
+        const toolStartTime = Date.now();
+        const { subject } = params;
+
+        // Check if general_knowledge was already called this request
+        if (generalKnowledgeCalledThisRequest) {
+            console.log(chalk.yellow("\n" + "=".repeat(80)));
+            console.log(chalk.yellow.bold("[🔧 TOOL CALL] general_knowledge - BLOCKED (already called this request)"));
+            console.log(chalk.yellow("=".repeat(80)));
+            console.log(chalk.cyan("Arguments:"), JSON.stringify(params, null, 2));
+            console.log(chalk.yellow("Returning - only one general_knowledge search allowed per request"));
+            console.log(chalk.yellow("=".repeat(80) + "\n"));
+            return "General knowledge was already searched for this request. Please use the information already provided.";
+        }
+
+        // Mark as called for this request
+        generalKnowledgeCalledThisRequest = true;
+
+        // Notify callback that tool is being called
+        if (toolCallCallback) {
+            toolCallCallback("general_knowledge");
+        }
+
+        // Log tool call initiation
+        console.log(chalk.magenta("\n" + "=".repeat(80)));
+        console.log(chalk.magenta.bold("[🔧 TOOL CALL] general_knowledge"));
+        console.log(chalk.magenta("=".repeat(80)));
+        console.log(chalk.cyan("Arguments:"), JSON.stringify(params, null, 2));
+        console.log(chalk.cyan("Timestamp:"), new Date().toISOString());
+
+        if (!subject || typeof subject !== "string") {
+            const error = `Error: Subject parameter is required and must be a string`;
+            const toolTime = Date.now() - toolStartTime;
+            console.log(chalk.red("❌ Tool execution failed"));
+            console.log(chalk.red("Error:"), error);
+            console.log(chalk.yellow(`⏱️  Execution time: ${toolTime}ms`));
+            console.log(chalk.magenta("=".repeat(80) + "\n"));
+            return error;
+        }
+
+        // Check if summarizer is available
+        if (!articleSummarizer) {
+            const toolTime = Date.now() - toolStartTime;
+            console.log(chalk.yellow("⚠️  Gemma summarizer not available, cannot use general_knowledge tool"));
+            console.log(chalk.yellow(`⏱️  Execution time: ${toolTime}ms`));
+            console.log(chalk.magenta("=".repeat(80) + "\n"));
+            return `The summarizer is not available. Please use wikipedia_search instead to look up "${subject}".`;
+        }
+
+        try {
+            console.log(chalk.blue(`🔍 Searching Wikipedia for: "${subject}"...`));
+            const searchStartTime = Date.now();
+            
+            // Search Wikipedia and get the first article with full content
+            const { searchResults, topArticle } = await searchWikipediaWithDetails(subject, {
+                limit: 1,  // Only need the first result
+                fullArticle: true,  // Get full article for better summarization
+                maxChars: undefined
+            });
+            const searchTime = Date.now() - searchStartTime;
+
+            if (!searchResults || searchResults.length === 0 || !topArticle) {
+                const toolTime = Date.now() - toolStartTime;
+                console.log(chalk.yellow(`⚠️  No Wikipedia article found for "${subject}"`));
+                console.log(chalk.yellow(`⏱️  Search API time: ${searchTime}ms`));
+                console.log(chalk.yellow(`⏱️  Total execution time: ${toolTime}ms`));
+                console.log(chalk.magenta("=".repeat(80) + "\n"));
+                return `I couldn't find any Wikipedia article about "${subject}". Please respond based on your existing knowledge, or let the user know you don't have information on this topic.`;
+            }
+
+            console.log(chalk.green(`✅ Found Wikipedia article: "${topArticle.title}"`));
+            console.log(chalk.yellow(`⏱️  Search API time: ${searchTime}ms`));
+            console.log(chalk.blue(`📝 Article length: ${topArticle.extract.length} characters`));
+
+            // Use Gemma summarizer to create a concise summary
+            console.log(chalk.blue("[Gemma270M] Summarizing article..."));
+            const summarizeStart = Date.now();
+            
+            const summary = await articleSummarizer({
+                topic: subject,
+                article: topArticle.extract,
+                sourceUrl: topArticle.url
+            });
+            
+            const summaryTime = Date.now() - summarizeStart;
+            console.log(chalk.green(`[Gemma270M] Summary ready in ${summaryTime}ms`));
+
+            // Format the response
+            const formattedResult = `${summary}\n\nSource: ${topArticle.url}`;
+
+            const toolTime = Date.now() - toolStartTime;
+            console.log(chalk.yellow(`⏱️  Total execution time: ${toolTime}ms`));
+            console.log(chalk.cyan(`📝 Summary length: ${summary.length} characters`));
+            console.log(chalk.magenta("=".repeat(80) + "\n"));
+
+            return formattedResult;
+        } catch (error) {
+            const toolTime = Date.now() - toolStartTime;
+            const errorMessage = error instanceof Error ? error.message : "Unknown error during general knowledge lookup";
+            console.log(chalk.red("❌ Tool execution failed"));
+            console.log(chalk.red("Error:"), errorMessage);
+            if (error instanceof Error && error.stack) {
+                console.log(chalk.red("Stack trace:"), error.stack);
+            }
+            console.log(chalk.yellow(`⏱️  Execution time: ${toolTime}ms`));
+            console.log(chalk.magenta("=".repeat(80) + "\n"));
+            return `Error looking up information about "${subject}": ${errorMessage}`;
+        }
+    }
+});
+
+/**
  * Export all functions as an object to pass to session.prompt()
  */
 export const functions = {
     web_search: webSearchFunction,
-    wikipedia_search: wikipediaSearchFunction
+    wikipedia_search: wikipediaSearchFunction,
+    general_knowledge: generalKnowledgeFunction
 };

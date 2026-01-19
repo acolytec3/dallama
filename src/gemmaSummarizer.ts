@@ -37,7 +37,6 @@ export async function createGemmaSummarizer(
         });
 
         const systemPrompt = `You are a very concise research assistant. Your job is to digest long Wikipedia content and produce a direct answer to the user's question.
-- Keep the summary under 150 words.
 - Give a short direct answer to the user's question; if insufficient info, say that.
 - Avoid speculation.`;
 
@@ -48,7 +47,7 @@ export async function createGemmaSummarizer(
 Wikipedia article:
 ${article}
 
-Write the concise summary, bullet facts, and the direct answer now.`;
+Write the concise summary.`;
 
         const summary = await session.prompt(prompt, {
             maxTokens: 256,
@@ -58,8 +57,6 @@ Write the concise summary, bullet facts, and the direct answer now.`;
         });
 
         const sourceLine = sourceUrl ? `\nSource: ${sourceUrl}` : "";
-        console.log(chalk.green("[Gemma270M] Summary ready"), summary);
-        console.log(summary)
         return `${summary}${sourceLine}`;
     };
 }
