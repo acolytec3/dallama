@@ -7,8 +7,7 @@ import cors from "@fastify/cors";
 
 import chalk from "chalk";
 import { getLlama, LlamaChatSession, resolveModelFile } from "node-llama-cpp";
-import { functions, setToolCallCallback, clearToolCallCallback, registerArticleSummarizer } from "./tools/index.js";
-import { createGemmaSummarizer } from "./gemmaSummarizer.js";
+import { functions, setToolCallCallback, clearToolCallCallback } from "./tools/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const modelsDirectory = path.join(__dirname, "..", "models");
@@ -146,15 +145,6 @@ async function selectModel(): Promise<string> {
 
 const llama = await getLlama({ gpu: false });
 
-// Initialize lightweight Gemma 270M summarizer to preprocess long articles
-try {
-    const summarizer = await createGemmaSummarizer(modelsDirectory, llama);
-    registerArticleSummarizer(summarizer);
-    console.log(chalk.green("[Gemma270M] Summarizer ready"));
-} catch (error) {
-    console.log(chalk.yellow("[Gemma270M] Summarizer unavailable; continuing without it"), error);
-}
-
 // Select model
 const selectedModel = await selectModel();
 
@@ -182,14 +172,8 @@ const session = new LlamaChatSession({
 });
 
 // System prompt - optimized for helpful, factual responses
-const systemPrompt = `You are a helpful AI research assistant. Keep your responses clear and concise. Your job is to answer questions factually, so limit follow-up questions to only ask for clarification if needed to provide a useful response. If you don't have an answer in your training data, use tools available to you to find and verify your answer. Do not make up an answer if not in your training data or a simple web search doesn't provide an answer.
-
-Tool usage guidelines:
-- Use general_knowledge for "tell me about X", "what is X?", "explain X" style questions where users want to learn about a subject (animals, plants, people, places, concepts). This tool provides a concise Wikipedia-based summary.
-- Use wikipedia_search for more specific lookups or when you need detailed raw Wikipedia content.
-- Use web_search for current events, news, weather, or real-time information.
-
-Only call one knowledge tool (general_knowledge or wikipedia_search) per user message. After getting results, provide your answer and stop calling tools.`;
+const systemPrompt = `You are a helpful AI research assistant. Keep your responses clear and concise. Your job is to answer questions factually, so limit follow-up questions to only ask for clarification if needed to provide a useful response.  If you don't have an answer 
+in your training data, use tools available to you to find and verify your answer.  Do not make up an answer if not in your training data or a simple web search doesn't provide an answer.`;
 
 // Initialize the session with the system prompt
 await session.prompt(systemPrompt);
@@ -198,9 +182,8 @@ const fastify = Fastify({ logger: false });
 
 // Register CORS plugin
 await fastify.register(cors, {
-    origin: true, // Reflect the request origin (allows any origin with credentials)
+    origin: true, // Reflect the request origin
     methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true
 });
 
@@ -231,7 +214,7 @@ fastify.post("/chat", async (request, reply) => {
         reply.raw.setHeader("Cache-Control", "no-cache");
         reply.raw.setHeader("Connection", "keep-alive");
         reply.raw.setHeader("X-Accel-Buffering", "no"); // Disable nginx buffering
-        
+
         // Add CORS headers for SSE (raw response bypasses Fastify CORS plugin)
         const origin = request.headers.origin;
         if (origin) {

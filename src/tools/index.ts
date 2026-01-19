@@ -8,9 +8,9 @@ import type { ArticleSummarizer } from "../gemmaSummarizer.js";
 let toolCallCallback: ((toolName: string) => void) | null = null;
 let articleSummarizer: ArticleSummarizer | null = null;
 
-// Track if Wikipedia search was already called in the current request
+// Track if tools were already called in the current request
+let webSearchCalledThisRequest = false;
 let wikipediaSearchCalledThisRequest = false;
-// Track if general knowledge tool was already called in the current request
 let generalKnowledgeCalledThisRequest = false;
 
 /**
@@ -25,6 +25,7 @@ export function setToolCallCallback(callback: (toolName: string) => void) {
  */
 export function clearToolCallCallback() {
     toolCallCallback = null;
+    webSearchCalledThisRequest = false;
     wikipediaSearchCalledThisRequest = false;
     generalKnowledgeCalledThisRequest = false;
 }
@@ -37,16 +38,46 @@ export function registerArticleSummarizer(summarizer: ArticleSummarizer) {
 }
 
 /**
+ * Get the current date formatted for the tool description
+ */
+function getCurrentDateString(): string {
+    return new Date().toLocaleDateString("en-US", {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric"
+    });
+}
+
+/**
+ * Build the web search tool description with current date
+ */
+function getWebSearchDescription(): string {
+    const currentDate = getCurrentDateString();
+    const currentYear = new Date().getFullYear();
+    return "Search the web for current information, news, facts, weather, or any topic. " +
+        `Today's date is ${currentDate}. ` +
+        "ALWAYS use this tool when users ask about: current weather, recent news, " +
+        "real-time information, current events, or anything requiring up-to-date data. " +
+        `When searching for current events or news, include the current year (${currentYear}) ` +
+        "in your search query to get the most relevant results. " +
+        "Use this tool whenever you don't have current information or when the user explicitly asks to search.";
+}
+
+/**
  * Define the web_search function using node-llama-cpp's native function calling API
  */
 export const webSearchFunction = defineChatSessionFunction({
-    description: "Search the web for current information, news, facts, weather, or any topic. ALWAYS use this tool when users ask about: current weather, recent news, real-time information, current events, or anything requiring up-to-date data. Use this tool whenever you don't have current information or when the user explicitly asks you to search. This is your PRIMARY way to get current, accurate information.",
+    get description() {
+        return getWebSearchDescription();
+    },
     params: {
         type: "object",
         properties: {
             query: {
                 type: "string",
-                description: "The search query to look up on the web"
+                description: "The search query to look up on the web. " +
+                    `For current events, include the year ${new Date().getFullYear()} in your query.`
             }
         },
         required: ["query"]
@@ -54,6 +85,20 @@ export const webSearchFunction = defineChatSessionFunction({
     async handler(params) {
         const toolStartTime = Date.now();
         const { query } = params;
+
+        // Check if web search was already called this request - only allow one call
+        if (webSearchCalledThisRequest) {
+            console.log(chalk.yellow("\n" + "=".repeat(80)));
+            console.log(chalk.yellow.bold("[🔧 TOOL CALL] web_search - BLOCKED (already called this request)"));
+            console.log(chalk.yellow("=".repeat(80)));
+            console.log(chalk.cyan("Arguments:"), JSON.stringify(params, null, 2));
+            console.log(chalk.yellow("Only one web search allowed per request"));
+            console.log(chalk.yellow("=".repeat(80) + "\n"));
+            return "Web search was already performed for this request. Please use the information already provided.";
+        }
+
+        // Mark web search as called for this request
+        webSearchCalledThisRequest = true;
 
         // Notify callback that tool is being called
         if (toolCallCallback) {
