@@ -36,9 +36,9 @@ export async function createGemmaSummarizer(
             contextSequence: context.getSequence(),
         });
 
-        const systemPrompt = `You are a very concise summarizer. Your job is to digest long Wikipedia content and produce both (a) a tight summary and (b) a direct answer to the user's question.
+        const systemPrompt = `You are a very concise research assistant. Your job is to digest long Wikipedia content and produce a direct answer to the user's question.
 - Keep the summary under 150 words.
-- Conclude with a short direct answer to the user's question; if insufficient info, say that.
+- Give a short direct answer to the user's question; if insufficient info, say that.
 - Avoid speculation.`;
 
         await session.prompt(systemPrompt);
