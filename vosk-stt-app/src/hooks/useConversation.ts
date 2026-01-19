@@ -99,40 +99,43 @@ export function useConversation() {
             };
 
             console.log("Sending request to LLM:", request);
-            
+
             // Handle SSE streaming with onChunk callback
             const response: ChatResponse = await llmService.sendMessage(request, (chunk: SSEChunk) => {
                 console.log("Received SSE chunk:", chunk);
-                
+
                 if (chunk.type === 'chunk' && chunk.text) {
                     // Accumulate streaming text
                     accumulatedText += chunk.text;
-                    
+
+                    // Create AI message ID on first chunk if not exists
+                    if (!aiMessageId) {
+                        aiMessageId = Date.now().toString();
+                    }
+
                     // Update or create AI message with streaming text
                     setState(prev => {
                         const updatedMessages = [...prev.messages];
-                        
-                        if (aiMessageId) {
+                        const existingIndex = updatedMessages.findIndex(m => m.id === aiMessageId);
+
+                        if (existingIndex >= 0) {
                             // Update existing message
-                            const index = updatedMessages.findIndex(m => m.id === aiMessageId);
-                            if (index >= 0) {
-                                updatedMessages[index] = {
-                                    ...updatedMessages[index],
-                                    text: accumulatedText,
-                                };
-                            }
+                            updatedMessages[existingIndex] = {
+                                ...updatedMessages[existingIndex],
+                                text: accumulatedText,
+                            };
                         } else {
                             // Create new AI message
-                            aiMessageId = Date.now().toString();
                             const newMessage: ConversationMessage = {
-                                id: aiMessageId,
+                                id: aiMessageId!,
                                 text: accumulatedText,
                                 timestamp: new Date().toISOString(),
                                 type: 'ai',
                             };
                             updatedMessages.push(newMessage);
                         }
-                        
+
+                        console.log("Updated messages after chunk:", updatedMessages);
                         return {
                             ...prev,
                             messages: updatedMessages,
@@ -140,59 +143,73 @@ export function useConversation() {
                     });
                 } else if (chunk.type === 'tool_call' && chunk.message) {
                     // Show tool call message (e.g., "Just a moment while I check on that.")
+                    if (!aiMessageId) {
+                        aiMessageId = Date.now().toString();
+                    }
+
                     setState(prev => {
                         const updatedMessages = [...prev.messages];
-                        
-                        if (!aiMessageId) {
-                            aiMessageId = Date.now().toString();
+                        const existingIndex = updatedMessages.findIndex(m => m.id === aiMessageId);
+
+                        if (existingIndex >= 0) {
+                            updatedMessages[existingIndex] = {
+                                ...updatedMessages[existingIndex],
+                                text: chunk.message || accumulatedText,
+                            };
+                        } else {
                             const newMessage: ConversationMessage = {
-                                id: aiMessageId,
+                                id: aiMessageId!,
                                 text: chunk.message || '',
                                 timestamp: new Date().toISOString(),
                                 type: 'ai',
                             };
                             updatedMessages.push(newMessage);
-                        } else {
-                            const index = updatedMessages.findIndex(m => m.id === aiMessageId);
-                            if (index >= 0) {
-                                updatedMessages[index] = {
-                                    ...updatedMessages[index],
-                                    text: chunk.message || accumulatedText,
-                                };
-                            }
                         }
-                        
+
                         return {
                             ...prev,
                             messages: updatedMessages,
                         };
                     });
                 } else if (chunk.type === 'done' && chunk.message) {
-                    // Final message received
+                    // Final message received - always create/update with final message
                     accumulatedText = chunk.message;
+
+                    if (!aiMessageId) {
+                        aiMessageId = Date.now().toString();
+                    }
+
+                    console.log("Processing done event, aiMessageId:", aiMessageId, "message:", chunk.message);
+
                     setState(prev => {
                         const updatedMessages = [...prev.messages];
-                        
-                        if (aiMessageId) {
-                            const index = updatedMessages.findIndex(m => m.id === aiMessageId);
-                            if (index >= 0) {
-                                updatedMessages[index] = {
-                                    ...updatedMessages[index],
-                                    text: chunk.message || accumulatedText,
-                                    timestamp: chunk.timestamp || new Date().toISOString(),
-                                };
-                            }
+                        const existingIndex = updatedMessages.findIndex(m => m.id === aiMessageId);
+
+                        console.log("In done setState, existingIndex:", existingIndex, "messages count:", updatedMessages.length);
+
+                        const finalText = chunk.message || accumulatedText;
+                        const finalTimestamp = chunk.timestamp || new Date().toISOString();
+
+                        if (existingIndex >= 0) {
+                            // Update existing message with final text
+                            updatedMessages[existingIndex] = {
+                                ...updatedMessages[existingIndex],
+                                text: finalText,
+                                timestamp: finalTimestamp,
+                            };
                         } else {
-                            aiMessageId = Date.now().toString();
+                            // Create new AI message
                             const newMessage: ConversationMessage = {
-                                id: aiMessageId,
-                                text: chunk.message,
-                                timestamp: chunk.timestamp || new Date().toISOString(),
+                                id: aiMessageId!,
+                                text: finalText,
+                                timestamp: finalTimestamp,
                                 type: 'ai',
                             };
                             updatedMessages.push(newMessage);
+                            console.log("Created new AI message:", newMessage);
                         }
-                        
+
+                        console.log("Final messages after done:", updatedMessages);
                         return {
                             ...prev,
                             messages: updatedMessages,
@@ -204,14 +221,14 @@ export function useConversation() {
                     throw new Error(chunk.error || chunk.message || 'Unknown error');
                 }
             });
-            
+
             console.log("Received final response from LLM:", response);
 
             // Ensure final message is set (in case done event wasn't processed)
             if (response.message && (!aiMessageId || accumulatedText !== response.message)) {
                 setState(prev => {
                     const updatedMessages = [...prev.messages];
-                    
+
                     if (aiMessageId) {
                         const index = updatedMessages.findIndex(m => m.id === aiMessageId);
                         if (index >= 0) {
@@ -230,7 +247,7 @@ export function useConversation() {
                         };
                         updatedMessages.push(aiMessage);
                     }
-                    
+
                     return {
                         ...prev,
                         messages: updatedMessages,

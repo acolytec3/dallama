@@ -194,9 +194,9 @@ const fastify = Fastify({ logger: false });
 
 // Register CORS plugin
 await fastify.register(cors, {
-    // origin: ["http://localhost:5173", "http://127.0.0.1:5173", "http://192.168.0.25"], // Vite dev server
-    origin: "*",
-    methods: ["GET", "POST"],
+    origin: true, // Reflect the request origin (allows any origin with credentials)
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true
 });
 
@@ -227,6 +227,13 @@ fastify.post("/chat", async (request, reply) => {
         reply.raw.setHeader("Cache-Control", "no-cache");
         reply.raw.setHeader("Connection", "keep-alive");
         reply.raw.setHeader("X-Accel-Buffering", "no"); // Disable nginx buffering
+        
+        // Add CORS headers for SSE (raw response bypasses Fastify CORS plugin)
+        const origin = request.headers.origin;
+        if (origin) {
+            reply.raw.setHeader("Access-Control-Allow-Origin", origin);
+            reply.raw.setHeader("Access-Control-Allow-Credentials", "true");
+        }
 
         // Helper function to send SSE message
         const sendSSE = (data: any) => {
